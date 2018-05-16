@@ -1,6 +1,6 @@
 {
   "name": "@electricui/protocol-binary",
-  "version": "0.2.2",
+  "version": "0.2.4",
   "description": "ElectricUI Binary Protocol Parser",
   "electricui-entry": "index.js",
   "repository": "https://Mike-Dax@github.com/Scottapotamas/electricui-interface.git",
