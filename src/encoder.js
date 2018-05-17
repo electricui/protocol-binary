@@ -18,6 +18,7 @@ const BUFFER_EOT = Buffer.from([0x04])
 
 /**
  * Generates an eUI Binary Packet
+ * @export
  * @param {object} options, see packetDefaults above for more information.
  * @returns {Buffer}
  */
