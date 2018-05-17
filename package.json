@@ -1,6 +1,6 @@
 {
   "name": "@electricui/protocol-binary",
-  "version": "0.2.14",
+  "version": "0.2.15",
   "description": "ElectricUI Binary Protocol Parser",
   "electricui-dev": true,
   "repository": "https://Mike-Dax@github.com/Scottapotamas/electricui-interface.git",
@@ -8,18 +8,19 @@
   "license": "See LICENCE",
   "main-when-published": "lib/index.js",
   "files": [
-    "lib/*"
+    "lib/*",
+    "manifest.json"
   ],
   "publishConfig": {
     "registry": "http://127.0.0.1:7001"
   },
   "dependencies": {
-    "@electricui/protocol-constants": "^0.2.14",
-    "@electricui/protocol-crc": "^0.2.14",
+    "@electricui/protocol-constants": "^0.2.15",
+    "@electricui/protocol-crc": "^0.2.15",
     "debug": "^3.1.0"
   },
   "devDependencies": {
-    "@electricui/protocol-type-transforms": "^0.2.14",
+    "@electricui/protocol-type-transforms": "^0.2.15",
     "babel-cli": "^6.26.0",
     "babel-helper-evaluate-path": "^0.4.3",
     "babel-plugin-external-helpers": "^6.22.0",
