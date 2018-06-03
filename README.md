@@ -1,3 +1,3 @@
 # electricui-protocol-binary
 
-This is the binary protocol package.
+This is the electricui binary protocol.
