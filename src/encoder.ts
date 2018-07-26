@@ -1,12 +1,19 @@
-import { Transform } from 'stream'
+import {
+  Transform,
+  TransformOptions
+} from 'stream'
 
+import {
+  ACK_NUM,
+  Packet
+} from '@electricui/protocol-constants'
 import CRC16 from '@electricui/protocol-crc'
 
-import * as errors from './errors'
-
 import packetDefaults from './defaults'
-
-import { ACK_NUM_MAX } from '@electricui/protocol-constants'
+import {
+  TypeCache,
+  uint8
+} from './types'
 
 const debug = require('debug')('electricui-protocol-binary:encoder')
 
@@ -22,7 +29,7 @@ const BUFFER_EOT = Buffer.from([0x04])
  * @param {object} options, see packetDefaults above for more information.
  * @returns {Buffer}
  */
-export function generatePacket(options) {
+export function generatePacket(options: Packet) {
   // merge the options provided with the defaults
   const mergedOptions = Object.assign({}, packetDefaults, options)
 
@@ -35,13 +42,13 @@ export function generatePacket(options) {
     type,
     messageID,
     ackNum,
-    payload
+    payload,
   } = mergedOptions
 
   // Check that the type is of the correct size, it's a 4 bit int.
   if (type < 0 || type > 15) {
     throw new TypeError(
-      'eUI Packet Type must have a value between 0 and 15 (inclusive)'
+      'eUI Packet Type must have a value between 0 and 15 (inclusive)',
     )
   }
 
@@ -54,7 +61,7 @@ export function generatePacket(options) {
     // TODO: Support more than 255 messageIDs
     if (messageID > 255) {
       throw new TypeError(
-        'eUI indice based messageIDs must be between 0 and 255 inclusive (for now)'
+        'eUI indice based messageIDs must be between 0 and 255 inclusive (for now)',
       )
     }
     // generate the 1 byte buffer from the indice
@@ -63,7 +70,7 @@ export function generatePacket(options) {
     messageIDBuffer = messageID
   } else {
     throw new TypeError(
-      'eUI Packet MessageID must be either a string, number (between 0 and 255 inclusive) or a Buffer'
+      'eUI Packet MessageID must be either a string, number (between 0 and 255 inclusive) or a Buffer',
     )
   }
 
@@ -75,14 +82,14 @@ export function generatePacket(options) {
 
     if (offset === false) {
       throw new TypeError(
-        'eUI offsets must be between 0 and 65535 (inclusive) or null.'
+        'eUI offsets must be between 0 and 65535 (inclusive) or null.',
       )
     }
 
     // Check that the offset length is of the correct size, it's a 16bit int.
     if (offset < 0 || offset > 65535) {
       throw new TypeError(
-        'eUI offsets must be between 0 and 65535 (inclusive) or null.'
+        'eUI offsets must be between 0 and 65535 (inclusive) or null.',
       )
     }
 
@@ -110,7 +117,7 @@ export function generatePacket(options) {
   // Check that the messageID length is of the correct size, it's a 4bit int.
   if (messageIDLength <= 0 || messageIDLength > 15) {
     throw new TypeError(
-      'eUI messageID Lengths must be between 1 and 15 (inclusive).'
+      'eUI messageID Lengths must be between 1 and 15 (inclusive).',
     )
   }
 
@@ -119,14 +126,14 @@ export function generatePacket(options) {
   // Check that the payload length is of the correct size, it's a 10bit int.
   if (payloadLength < 0 || payloadLength > 1024) {
     throw new TypeError(
-      'eUI payload lengths must be between 0 and 1024 (inclusive).'
+      'eUI payload lengths must be between 0 and 1024 (inclusive).',
     )
   }
 
   // Check that the ackNum length is of the correct size, it's a 3bit int.
-  if (ackNum < 0 || ackNum > ACK_NUM_MAX) {
+  if (ackNum < 0 || ackNum > ACK_NUM.MAX) {
     throw new TypeError(
-      `eUI ackNums must be between 0 and ${ACK_NUM_MAX} (inclusive).`
+      `eUI ackNums must be between 0 and ${ACK_NUM.MAX} (inclusive).`,
     )
   }
 
@@ -193,7 +200,7 @@ export function generatePacket(options) {
       offsetBuffer,
       payloadBuffer,
       checksumBuffer,
-      BUFFER_EOT
+      BUFFER_EOT,
     ]
   } else {
     packetArray = [
@@ -203,7 +210,7 @@ export function generatePacket(options) {
       messageIDBuffer,
       payloadBuffer,
       checksumBuffer,
-      BUFFER_EOT
+      BUFFER_EOT,
     ]
   }
 
@@ -212,33 +219,38 @@ export function generatePacket(options) {
   return packet
 }
 
+declare interface BinaryProtocolEncoderOptions extends TransformOptions {
+  typeCache?: TypeCache
+}
+
 class BinaryProtocolEncoder extends Transform {
-  constructor(options) {
+  typeCache: TypeCache
+
+  constructor(options: BinaryProtocolEncoderOptions) {
     options = options || {}
     options.writableObjectMode = true
     super(options)
-    this.options = options
     this.typeCache = options.typeCache || {}
   }
 
-  _transform(chunk, encoding, callback) {
+  _transform(packet: Packet, encoding: string, callback: Function) {
     // non-internal messages utilise a type cache
-    if (!chunk.internal) {
+    if (!packet.internal) {
       // extract the type cache entry
-      const cachedTypeData = this.typeCache[chunk.messageID]
+      const cachedTypeData = this.typeCache[packet.messageID]
 
       // check if it's valid
       if (cachedTypeData) {
         // annotate the packet with the cached type data
         this.push(
-          generatePacket(Object.assign({}, { type: cachedTypeData }, chunk))
+          generatePacket(Object.assign({}, { type: cachedTypeData }, packet)),
         )
         return callback()
       }
     }
 
     // raw sends
-    this.push(generatePacket(chunk))
+    this.push(generatePacket(packet))
     callback()
   }
 }

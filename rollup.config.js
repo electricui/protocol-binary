@@ -1,23 +1,10 @@
-import babel from 'rollup-plugin-babel'
+import typescript from 'rollup-plugin-typescript2'
 
 export default {
-  input: 'index.js',
+  input: 'index.ts',
   output: {
     file: 'lib/index.js',
-    format: 'cjs'
+    format: 'cjs',
   },
-  plugins: [
-    babel({
-      comments: false,
-      exclude: 'node_modules/*',
-      plugins: [
-        'external-helpers',
-        'minify-mangle-names',
-        'minify-simplify',
-        'transform-merge-sibling-variables',
-        'minify-dead-code-elimination',
-        'minify-constant-folding'
-      ]
-    })
-  ]
+  plugins: [typescript()],
 }

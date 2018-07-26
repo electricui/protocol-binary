@@ -1,40 +1,83 @@
-import { Transform } from 'stream'
+import {
+  Transform,
+  TransformOptions
+} from 'stream'
 
-import { onlyPrintableCharacters } from './utils'
+import {
+  EVENT_LARGEST_PAYLOAD_SIZE_SEEN,
+  EventInterface,
+  Packet,
+  PacketError
+} from '@electricui/protocol-constants'
+import CRC16 from '@electricui/protocol-crc'
 
 import packetDefaults from './defaults'
-
-import * as errors from './errors'
-
-import { EVENT_LARGEST_PAYLOAD_SIZE_SEEN } from '@electricui/protocol-constants'
+import ERRORS from './ERRORS'
+import {
+  TypeCache,
+  uint8
+} from './types'
+import {
+  onlyPrintableCharacters
+} from './utils'
 
 const debug = require('debug')('electricui-protocol-binary:decoder')
 
-import CRC16 from '@electricui/protocol-crc'
+const enum CONTROL_CHARACTERS {
+  SOH = 0x01,
+  STX = 0x02,
+  ETX = 0x03,
+  EOT = 0x04,
+}
 
-const STATE_AWAITING_SOH = 0
-const STATE_AWAITING_HEADER = 1
-const STATE_AWAITING_MESSAGEID = 2
-const STATE_AWAITING_OFFSET = 3
-const STATE_AWAITING_PAYLOAD = 4
-const STATE_AWAITING_CHECKSUM = 5
-const STATE_AWAITING_EOT = 6
+const enum STATE {
+  AWAITING_SOH,
+  AWAITING_HEADER,
+  AWAITING_MESSAGEID,
+  AWAITING_OFFSET,
+  AWAITING_PAYLOAD,
+  AWAITING_CHECKSUM,
+  AWAITING_EOT,
+}
 
-const CONTROL_CHARACTER_SOH = 0x01
-const CONTROL_CHARACTER_STX = 0x02
-const CONTROL_CHARACTER_ETX = 0x03
-const CONTROL_CHARACTER_EOT = 0x04
+declare interface BinaryProtocolDecoderOptions extends TransformOptions {
+  typeCache?: TypeCache
+  eventInterface?: EventInterface
+}
 
 class BinaryProtocolDecoder extends Transform {
+  // TODO: this is ugly, clean up
+  state = STATE.AWAITING_SOH
+  headerBuffer = Buffer.alloc(3)
+  headerCounter = 0 // 0 - 2 for 3 bytes of header
+  messageIDBuffer: Buffer | null = null // we'll allocate a buffer later
+  expectedMessageIDLen = 0
+  messageIDCounter = 0
+  offsetUInt16Array = new Uint16Array([0x0000])
+  offsetCounter = 0
+  payloadBuffer: Buffer | null = null // we'll allocate a buffer later
+  expectedPayloadLength = 0
+  payloadCounter = 0
+  checksumUInt16Array = new Uint16Array([0x0000])
+  checksumCounter = 0
+  largestPayloadSizeSeen = 0
+  messageContainsOffset = false
+
+  crc: CRC16
+  message: Packet
+  typeCache: TypeCache
+  eventInterface: EventInterface
+
   /**
    * Resets the internal state of the state machine
    */
   reset = () => {
     this.message = {
-      raw: Buffer.alloc(0)
+      ...packetDefaults,
+      raw: Buffer.alloc(0),
     }
 
-    this.state = STATE_AWAITING_SOH
+    this.state = STATE.AWAITING_SOH
 
     this.headerBuffer = Buffer.alloc(3)
     this.headerCounter = 0 // 0 - 2 for 3 bytes of header
@@ -50,15 +93,16 @@ class BinaryProtocolDecoder extends Transform {
     this.expectedPayloadLength = 0
     this.payloadCounter = 0
 
+    this.messageContainsOffset = false
+
     this.checksumUInt16Array = new Uint16Array([0x0000])
     this.checksumCounter = 0
     this.crc.reset()
   }
 
-  constructor(options) {
-    options = options || {}
-    options.readableObjectMode = true
+  constructor(options: BinaryProtocolDecoderOptions) {
     super(options)
+    options.readableObjectMode = true
 
     this.crc = new CRC16()
 
@@ -90,8 +134,8 @@ class BinaryProtocolDecoder extends Transform {
           this.eventInterface.write({
             type: EVENT_LARGEST_PAYLOAD_SIZE_SEEN,
             payload: {
-              length: this.largestPayloadSizeSeen
-            }
+              length: this.largestPayloadSizeSeen,
+            },
           })
         }
       }
@@ -103,7 +147,7 @@ class BinaryProtocolDecoder extends Transform {
   /**
    * We log the raw bytes that built the packet
    */
-  continueLog = b => {
+  continueLog = (b: uint8) => {
     const byte = Buffer.from([b])
     this.message.raw = Buffer.concat([this.message.raw, byte])
   }
@@ -111,7 +155,7 @@ class BinaryProtocolDecoder extends Transform {
   /**
    * Bubble an error up the abstraction and reset
    */
-  error = err => {
+  error = (err: PacketError) => {
     this.message.error = err
     debug(`Error in state machine ${err}`)
     this.cycle()
@@ -121,20 +165,20 @@ class BinaryProtocolDecoder extends Transform {
    * Steps through the decoder state machine
    * @param {byte} byte of packet
    */
-  step = b => {
+  step = (b: uint8) => {
     switch (this.state) {
-      case STATE_AWAITING_SOH:
+      case STATE.AWAITING_SOH:
         // we'll ignore noise until we find a SOH control code
-        if (b === CONTROL_CHARACTER_SOH) {
+        if (b === CONTROL_CHARACTERS.SOH) {
           debug('Detected a SOH control code, begin parsing')
-          this.state = STATE_AWAITING_HEADER // we expect the next three bytes to be header bytes
+          this.state = STATE.AWAITING_HEADER // we expect the next three bytes to be header bytes
         }
         break
-      case STATE_AWAITING_HEADER:
+      case STATE.AWAITING_HEADER:
         debug(
           `Received header byte #${this.headerCounter}: ${Buffer.from([
-            b
-          ]).toString('hex')}`
+            b,
+          ]).toString('hex')}`,
         )
         // set the header buffer byte at the right indice to the byte we just received
         this.headerBuffer[this.headerCounter] = b
@@ -155,7 +199,7 @@ class BinaryProtocolDecoder extends Transform {
           this.expectedPayloadLength = payloadHeader[0] & 0x03ff // prettier-ignore
           this.message.type =      (payloadHeader[0] & 0x3c00) >>> 10 // prettier-ignore
           this.message.internal =  (payloadHeader[0] & 0x4000) === 0x4000 // prettier-ignore
-          this.message.offset =    (payloadHeader[0] & 0x8000) === 0x8000 ? true : null // prettier-ignore
+          this.messageContainsOffset = (payloadHeader[0] & 0x8000) === 0x8000 // prettier-ignore
 
           // allocate buffer for the payloadLength
           this.payloadBuffer = Buffer.alloc(this.expectedPayloadLength)
@@ -163,7 +207,7 @@ class BinaryProtocolDecoder extends Transform {
           debug(`\t expectedPayloadLength: ${this.expectedPayloadLength}`)
           debug(`\t type: ${this.message.type}`)
           debug(`\t internal: ${this.message.internal}`)
-          debug(`\t offset: ${this.message.offset}`)
+          debug(`\t offset: ${this.messageContainsOffset}`)
 
           this.expectedMessageIDLen = this.headerBuffer[2] & 0x0f // prettier-ignore
           this.message.query =       (this.headerBuffer[2] & 0x10) === 0x10 // prettier-ignore
@@ -182,18 +226,18 @@ class BinaryProtocolDecoder extends Transform {
           }
 
           // next byte will be the messageID
-          this.state = STATE_AWAITING_MESSAGEID
+          this.state = STATE.AWAITING_MESSAGEID
           break
         }
 
         // we would have broken out if we had seen the third byte, so we keep going
         this.headerCounter++
         break
-      case STATE_AWAITING_MESSAGEID:
+      case STATE.AWAITING_MESSAGEID:
         debug(
           `Received messageID byte #${this.messageIDCounter + 1}/${
             this.expectedMessageIDLen
-          }: ${Buffer.from([b]).toString('hex')}`
+          }: ${Buffer.from([b]).toString('hex')}`,
         )
         // set the messageID buffer byte at the right indice to the byte we just received
         this.messageIDBuffer[this.messageIDCounter] = b
@@ -212,20 +256,20 @@ class BinaryProtocolDecoder extends Transform {
           if (onlyPrintableCharacters(this.messageIDBuffer)) {
             this.message.messageID = this.messageIDBuffer.toString('utf8')
           } else {
-            this.message.messageID = this.messageIDBuffer
+            this.message.messageID = this.messageIDBuffer[0] // TODO: Support more than 255 messageIDs
           }
 
           debug(`\t messageID: ${this.message.messageID}`)
 
           // depending on the offset header bit we'll be expecting the offset
           // next or the payload
-          if (this.message.offset) {
-            this.state = STATE_AWAITING_OFFSET
+          if (this.messageContainsOffset) {
+            this.state = STATE.AWAITING_OFFSET
           } else if (this.expectedPayloadLength > 0) {
             // if the payloadLength is > 0
-            this.state = STATE_AWAITING_PAYLOAD
+            this.state = STATE.AWAITING_PAYLOAD
           } else {
-            this.state = STATE_AWAITING_CHECKSUM
+            this.state = STATE.AWAITING_CHECKSUM
           }
           break
         }
@@ -233,15 +277,15 @@ class BinaryProtocolDecoder extends Transform {
         // we would have broken out if we had seen the last byte, so we keep going
         this.messageIDCounter++
         break
-      case STATE_AWAITING_OFFSET:
+      case STATE.AWAITING_OFFSET:
         // Run the checksum
         this.crc.step(b)
 
         if (this.offsetCounter === 0) {
           debug(
             `Consuming the first offset byte: ${Buffer.from([b]).toString(
-              'hex'
-            )}`
+              'hex',
+            )}`,
           )
           // merge in the first byte
 
@@ -249,8 +293,8 @@ class BinaryProtocolDecoder extends Transform {
         } else if (this.offsetCounter === 1) {
           debug(
             `Consuming the second offset byte: ${Buffer.from([b]).toString(
-              'hex'
-            )}`
+              'hex',
+            )}`,
           )
 
           // bitshift and merge in the second byte
@@ -263,9 +307,9 @@ class BinaryProtocolDecoder extends Transform {
 
           // next bytes will be payload data if there is a payload
           if (this.expectedPayloadLength > 0) {
-            this.state = STATE_AWAITING_PAYLOAD
+            this.state = STATE.AWAITING_PAYLOAD
           } else {
-            this.state = STATE_AWAITING_CHECKSUM
+            this.state = STATE.AWAITING_CHECKSUM
           }
           break
         }
@@ -273,11 +317,11 @@ class BinaryProtocolDecoder extends Transform {
         // we would have broken out if we had seen the last byte, so we keep going
         this.offsetCounter++
         break
-      case STATE_AWAITING_PAYLOAD:
+      case STATE.AWAITING_PAYLOAD:
         debug(
           `Received payload byte #${this.payloadCounter + 1}/${
             this.expectedPayloadLength
-          }: ${Buffer.from([b]).toString('hex')}`
+          }: ${Buffer.from([b]).toString('hex')}`,
         )
 
         // set the payload buffer byte at the right indice to the byte we just received
@@ -296,19 +340,19 @@ class BinaryProtocolDecoder extends Transform {
           debug(`\t payload: ${this.message.payload.toString('hex')}`)
 
           // next is the checksum
-          this.state = STATE_AWAITING_CHECKSUM
+          this.state = STATE.AWAITING_CHECKSUM
           break
         }
 
         // we would have broken out if we had seen the last byte, so we keep going
         this.payloadCounter++
         break
-      case STATE_AWAITING_CHECKSUM:
+      case STATE.AWAITING_CHECKSUM:
         if (this.checksumCounter === 0) {
           debug(
             `Consuming the first checksum byte: ${Buffer.from([b]).toString(
-              'hex'
-            )}`
+              'hex',
+            )}`,
           )
 
           // merge in the first byte
@@ -316,8 +360,8 @@ class BinaryProtocolDecoder extends Transform {
         } else if (this.checksumCounter === 1) {
           debug(
             `Consuming the second checksum byte: ${Buffer.from([b]).toString(
-              'hex'
-            )}`
+              'hex',
+            )}`,
           )
 
           // bitshift and merge in the second byte
@@ -331,14 +375,18 @@ class BinaryProtocolDecoder extends Transform {
 
           // check that the checksum matches
           if (calculatedChecksum !== this.checksumUInt16Array[0]) {
-            this.expectedChecksum = calculatedChecksum
-            this.reportedChecksum = this.checksumUInt16Array[0]
-            this.error(errors.INCORRECT_CHECKSUM)
+            this.error({
+              type: ERRORS.INCORRECT_CHECKSUM,
+              additionalInfo: {
+                expectedChecksum: calculatedChecksum,
+                reportedChecksum: this.checksumUInt16Array[0],
+              },
+            })
             break
           }
 
           // next byte will be the EOT
-          this.state = STATE_AWAITING_EOT
+          this.state = STATE.AWAITING_EOT
 
           break
         }
@@ -346,9 +394,9 @@ class BinaryProtocolDecoder extends Transform {
         // we would have broken out if we had seen the last byte, so we keep going
         this.checksumCounter++
         break
-      case STATE_AWAITING_EOT:
-        if (b !== CONTROL_CHARACTER_EOT) {
-          this.error(errors.EXPECTED_EOT)
+      case STATE.AWAITING_EOT:
+        if (b !== CONTROL_CHARACTERS.EOT) {
+          this.error({ type: ERRORS.EXPECTED_EOT })
           break
         }
 
@@ -367,7 +415,7 @@ class BinaryProtocolDecoder extends Transform {
     }
 
     // If we're currently parsing a packet, log all bytes
-    if (this.state > STATE_AWAITING_SOH) {
+    if (this.state > STATE.AWAITING_SOH) {
       this.continueLog(b)
     }
   }
@@ -375,7 +423,7 @@ class BinaryProtocolDecoder extends Transform {
   /**
    * As bytes are pushed into the Transform pipe, step through the state machine.
    */
-  _transform(chunk, encoding, callback) {
+  _transform(chunk: Buffer, encoding: string, callback: Function) {
     debug(`_transform: ${chunk.toString('hex')}`)
 
     for (const b of chunk) {
