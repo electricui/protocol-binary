@@ -101,8 +101,7 @@ class BinaryProtocolDecoder extends Transform {
   }
 
   constructor(options: BinaryProtocolDecoderOptions) {
-    super(options)
-    options.readableObjectMode = true
+    super(Object.assign(options, { readableObjectMode: true }))
 
     this.crc = new CRC16()
 
@@ -426,9 +425,10 @@ class BinaryProtocolDecoder extends Transform {
   _transform(chunk: Buffer, encoding: string, callback: Function) {
     debug(`_transform: ${chunk.toString('hex')}`)
 
-    for (const b of chunk) {
-      this.step(b)
+    for (var i = 0; i < chunk.length; i++) {
+      this.step(chunk[i])
     }
+
     callback()
   }
 }

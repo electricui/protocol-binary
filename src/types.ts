@@ -7,4 +7,3 @@ export type uint8 = number
 export interface TypeCache {
   [key: string]: TYPES
 }
-

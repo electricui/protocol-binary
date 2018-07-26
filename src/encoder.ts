@@ -77,14 +77,8 @@ export function generatePacket(options: Packet) {
   let offsetBuffer = null
 
   // offset will either be a number, or null.
-  if (offset !== null && !isNaN(parseInt(offset, 10))) {
+  if (offset !== null) {
     debug(`Offset value is ${offset}`)
-
-    if (offset === false) {
-      throw new TypeError(
-        'eUI offsets must be between 0 and 65535 (inclusive) or null.',
-      )
-    }
 
     // Check that the offset length is of the correct size, it's a 16bit int.
     if (offset < 0 || offset > 65535) {
@@ -228,8 +222,8 @@ class BinaryProtocolEncoder extends Transform {
 
   constructor(options: BinaryProtocolEncoderOptions) {
     options = options || {}
-    options.writableObjectMode = true
-    super(options)
+
+    super(Object.assign(options, { writableObjectMode: true }))
     this.typeCache = options.typeCache || {}
   }
 
