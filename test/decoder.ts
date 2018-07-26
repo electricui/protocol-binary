@@ -1,19 +1,21 @@
-import sinon from 'sinon'
-import chai from 'chai'
-import chaiSubset from 'chai-subset'
+import * as sinon from 'sinon'
 
-chai.use(chaiSubset)
-const assert = chai.assert
+import {
+  TYPES
+} from '@electricui/protocol-constants'
 
 import BinaryProtocolDecoder from '../src/decoder'
-import * as errors from './../src/errors'
 
-import { TYPE_CALLBACK, TYPE_UINT8 } from '@electricui/protocol-constants'
+var chai = require('chai')
+var chaiSubset = require('chai-subset')
+chai.use(chaiSubset)
 
-function validFactory(input, expectedSubset = {}) {
+const assert = chai.assert
+
+function validFactory(input: Buffer, expectedSubset = {}) {
   return () => {
     const spy = sinon.spy()
-    const parser = new BinaryProtocolDecoder()
+    const parser = new BinaryProtocolDecoder({})
 
     parser.on('data', spy)
     parser.on('data', d => console.log('received back', d))
@@ -30,12 +32,12 @@ function validFactory(input, expectedSubset = {}) {
 }
 
 function invalidFactory(
-  input,
-  expectedError = 'Make sure you define an expected error'
+  input: Buffer,
+  expectedError = 'Make sure you define an expected error',
 ) {
   return () => {
     const spy = sinon.spy()
-    const parser = new BinaryProtocolDecoder()
+    const parser = new BinaryProtocolDecoder({})
 
     parser.on('data', spy)
 
@@ -49,10 +51,10 @@ function invalidFactory(
   }
 }
 
-function noiseFactory(input) {
+function noiseFactory(input: Buffer) {
   return () => {
     const spy = sinon.spy()
-    const parser = new BinaryProtocolDecoder()
+    const parser = new BinaryProtocolDecoder({})
 
     parser.on('data', spy)
 
@@ -65,7 +67,7 @@ function noiseFactory(input) {
 describe('BinaryProtocolDecoder', () => {
   xit('correctly decodes two packets out of a stream', () => {
     const spy = sinon.spy()
-    const parser = new BinaryProtocolDecoder()
+    const parser = new BinaryProtocolDecoder({})
     parser.on('data', spy)
 
     parser.write(
@@ -82,8 +84,8 @@ describe('BinaryProtocolDecoder', () => {
         0x03,
         0x03,
         0x24,
-        0x04
-      ])
+        0x04,
+      ]),
     )
 
     parser.write(
@@ -98,18 +100,18 @@ describe('BinaryProtocolDecoder', () => {
         0x66, // payload - f
         0x03, // ETX
         0xfe, // checksum
-        0x04 // EOT
-      ])
+        0x04, // EOT
+      ]),
     )
 
     assert.containSubset(spy.getCall(0).args[0], {
       messageID: 'heh',
       payload: Buffer.from([0x03, 0x03, 0x03]),
-      type: TYPE_INT16, // this isn't necessarily reflective of the data payload above
+      type: TYPES.INT16, // this isn't necessarily reflective of the data payload above
       internal: true,
       customType: false,
       ack: false,
-      reservedBit: false
+      reservedBit: false,
     })
     assert.isUndefined(spy.getCall(0).args[0].error, 'errored')
 
@@ -120,7 +122,7 @@ describe('BinaryProtocolDecoder', () => {
       internal: true,
       customType: true,
       ack: true,
-      reservedBit: true
+      reservedBit: true,
     })
     assert.isUndefined(spy.getCall(1).args[0].error, 'errored')
   })
@@ -145,18 +147,18 @@ describe('BinaryProtocolDecoder', () => {
         0x02, // payload
         0x7e, // checksum
         0x63, // checksum
-        0x04
+        0x04,
       ]),
       {
         messageID: 'led',
         payload: Buffer.from([0x02]),
-        type: TYPE_UINT8,
+        type: TYPES.UINT8,
         internal: false,
         query: false,
         ack: false,
-        offset: null
-      }
-    )
+        offset: null,
+      },
+    ),
   )
 
   xit(
@@ -167,19 +169,19 @@ describe('BinaryProtocolDecoder', () => {
           0x01, // SOH
           0xff, // Header
           0xff, // Header
-          0xff // Header
+          0xff, // Header
         ]),
         Buffer.from(Array(15 + 1).join('f')), // 15 0x66s
         Buffer.from([
           0xff, // Offset
-          0xff // Offset
+          0xff, // Offset
         ]),
         Buffer.from(Array(1023 + 1).join('f')), // 1024 0x66s
         Buffer.from([
           0x5d, // Checksum
           0xc4, // Checksum
-          0x04 // EOT
-        ])
+          0x04, // EOT
+        ]),
       ]),
       {
         messageID: Array(15 + 1).join('f'),
@@ -189,9 +191,9 @@ describe('BinaryProtocolDecoder', () => {
         query: true,
         offset: 65535,
         type: 15,
-        ackNum: 3
-      }
-    )
+        ackNum: 3,
+      },
+    ),
   )
 
   xit(
@@ -206,9 +208,9 @@ describe('BinaryProtocolDecoder', () => {
         internal: true,
         customType: true,
         ack: true,
-        reservedBit: true
-      }
-    )
+        reservedBit: true,
+      },
+    ),
   )
 
   xit(
@@ -223,8 +225,8 @@ describe('BinaryProtocolDecoder', () => {
         internal: true,
         customType: true,
         ack: true,
-        reservedBit: true
-      }
-    )
+        reservedBit: true,
+      },
+    ),
   )
 })

@@ -1,17 +1,18 @@
-import sinon from 'sinon'
-import chai from 'chai'
-import chaiSubset from 'chai-subset'
+import * as sinon from 'sinon'
 
-chai.use(chaiSubset)
-const assert = chai.assert
-
-import BinaryProtocolEncoder from '../src/encoder'
 import BinaryProtocolDecoder from '../src/decoder'
+import BinaryProtocolEncoder from '../src/encoder'
+
+var chai = require('chai')
+var chaiSubset = require('chai-subset')
+chai.use(chaiSubset)
+
+const assert = chai.assert
 
 function generateTest() {
   // A fake mock compliant hardware
-  const mockHardwareEncoder = new BinaryProtocolEncoder()
-  const mockHardwareDecoder = new BinaryProtocolDecoder()
+  const mockHardwareEncoder = new BinaryProtocolEncoder({})
+  const mockHardwareDecoder = new BinaryProtocolDecoder({})
 
   // this would be in our config file, everything would share this cache
   let typeCache = {}
@@ -35,7 +36,7 @@ function generateTest() {
     uiInterface: encoder,
     typeCache,
     spyUI,
-    spyHW
+    spyHW,
   }
 }
 
@@ -47,14 +48,14 @@ describe('Binary Protocol Type Cache', () => {
       messageID: 'hello',
       type: 15,
       internal: false,
-      payload: Buffer.from('hey there')
+      payload: Buffer.from('hey there'),
     }
 
     // the same hello message without a type (this would be sent by the UI)
     const helloMessageWithoutType = {
       messageID: 'hello',
       internal: false,
-      payload: Buffer.from('hey there')
+      payload: Buffer.from('hey there'),
     }
 
     // have the hardware say hi
@@ -74,7 +75,7 @@ describe('Binary Protocol Type Cache', () => {
       messageID: 'as',
       type: 3,
       internal: true,
-      payload: Buffer.from('data')
+      payload: Buffer.from('data'),
     }
 
     // have the hardware say hi
