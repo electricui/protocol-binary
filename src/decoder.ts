@@ -6,8 +6,8 @@ import {
 import {
   EVENT_LARGEST_PAYLOAD_SIZE_SEEN,
   EventInterface,
-  Packet,
-  PacketError
+  PacketError,
+  PacketHardware
 } from '@electricui/protocol-constants'
 import CRC16 from '@electricui/protocol-crc'
 
@@ -64,7 +64,7 @@ class BinaryProtocolDecoder extends Transform {
   messageContainsOffset = false
 
   crc: CRC16
-  message: Packet
+  message: PacketHardware
   typeCache: TypeCache
   eventInterface: EventInterface
 

@@ -5,7 +5,7 @@ import {
 
 import {
   ACK_NUM,
-  Packet
+  PacketHardware
 } from '@electricui/protocol-constants'
 import CRC16 from '@electricui/protocol-crc'
 
@@ -29,7 +29,7 @@ const BUFFER_EOT = Buffer.from([0x04])
  * @param {object} options, see packetDefaults above for more information.
  * @returns {Buffer}
  */
-export function generatePacket(options: Packet) {
+export function generatePacket(options: PacketHardware) {
   // merge the options provided with the defaults
   const mergedOptions = Object.assign({}, packetDefaults, options)
 
@@ -94,10 +94,9 @@ export function generatePacket(options: Packet) {
 
   debug(`Payload is ${payload}`)
 
-  let payloadBuffer
-
+  const payloadBuffer = payload
+  /*
   // TODO: improve this.
-
   if (Buffer.isBuffer(payload)) {
     payloadBuffer = payload
   } else if (payload === undefined || payload === null) {
@@ -105,7 +104,7 @@ export function generatePacket(options: Packet) {
   } else {
     payloadBuffer = Buffer.from([payload])
   }
-
+  */
   const messageIDLength = messageIDBuffer.length
 
   // Check that the messageID length is of the correct size, it's a 4bit int.
@@ -227,7 +226,7 @@ class BinaryProtocolEncoder extends Transform {
     this.typeCache = options.typeCache || {}
   }
 
-  _transform(packet: Packet, encoding: string, callback: Function) {
+  _transform(packet: PacketHardware, encoding: string, callback: Function) {
     // non-internal messages utilise a type cache
     if (!packet.internal) {
       // extract the type cache entry

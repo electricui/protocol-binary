@@ -1,9 +1,9 @@
 import {
-  Packet,
+  PacketHardware,
   TYPES
 } from '@electricui/protocol-constants'
 
-const packetDefaults: Packet = {
+const packetDefaults: PacketHardware = {
   payload: null,
   type: TYPES.BYTE,
   internal: false,
