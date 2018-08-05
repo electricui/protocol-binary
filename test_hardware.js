@@ -1,26 +1,30 @@
+import {
+  TypeTransformDecoder,
+  TypeTransformEncoder,
+  defaultDecoderList,
+  defaultEncoderList,
+} from './../electricui-protocol-type-transforms'
+
 import BinaryProtocolDecoder from './src/decoder.js'
 import BinaryProtocolEncoder from './src/encoder.js'
-
-import {
-  TypeTransform,
-  defaultEncoderList,
-  defaultDecoderList
-} from './../electricui-protocol-type-transforms'
+import now from 'performance-now'
 
 const SerialPort = require('serialport')
 
 const debug = require('debug')('electricui-protocol-binary:hardwaretest')
 
-import now from 'performance-now'
-
-const port = new SerialPort('/dev/cu.usbmodem1421', { baudRate: 115200 }, e => {
-  debug('Port error? ', e)
-})
+const port = new SerialPort(
+  '/dev/cu.usbmodem141131',
+  { baudRate: 115200 },
+  e => {
+    debug('Port error? ', e)
+  },
+)
 
 const parser = new BinaryProtocolDecoder()
 const encoder = new BinaryProtocolEncoder()
-const typetransform = new TypeTransform()
-const typeencoder = new TypeTransform()
+const typetransform = new TypeTransformDecoder()
+const typeencoder = new TypeTransformEncoder()
 
 typetransform.use(defaultDecoderList)
 typeencoder.use(defaultEncoderList)
@@ -57,10 +61,10 @@ port.on('open', () => {
     debug('asking for as')
 
     write({
-      messageID: 'as',
+      messageID: 'dv',
       internal: true,
       type: 0,
-      query: true
+      query: true,
       //
     })
   }, 1000)
@@ -73,7 +77,7 @@ typetransform.on('data', packet => {
     now() - time,
     'ms since last write',
     now() - eventTime,
-    'ms since last event'
+    'ms since last event',
   )
 
   eventTime = now()
