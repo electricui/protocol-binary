@@ -94,8 +94,8 @@ export function generatePacket(options: PacketHardware) {
 
   debug(`Payload is ${payload}`)
 
-  const payloadBuffer = payload
-  /*
+  let payloadBuffer = payload
+
   // TODO: improve this.
   if (Buffer.isBuffer(payload)) {
     payloadBuffer = payload
@@ -104,7 +104,7 @@ export function generatePacket(options: PacketHardware) {
   } else {
     payloadBuffer = Buffer.from([payload])
   }
-  */
+
   const messageIDLength = messageIDBuffer.length
 
   // Check that the messageID length is of the correct size, it's a 4bit int.
