@@ -12,7 +12,7 @@ import {
 import CRC16 from '@electricui/protocol-crc'
 
 import packetDefaults from './defaults'
-import ERRORS from './ERRORS'
+import ERRORS from './errors'
 import {
   TypeCache,
   uint8
@@ -196,8 +196,8 @@ class BinaryProtocolDecoder extends Transform {
 
           // the first 10 bits are payload length
           this.expectedPayloadLength = payloadHeader[0] & 0x03ff // prettier-ignore
-          this.message.type =      (payloadHeader[0] & 0x3c00) >>> 10 // prettier-ignore
-          this.message.internal =  (payloadHeader[0] & 0x4000) === 0x4000 // prettier-ignore
+          this.message.type = (payloadHeader[0] & 0x3c00) >>> 10 // prettier-ignore
+          this.message.internal = (payloadHeader[0] & 0x4000) === 0x4000 // prettier-ignore
           this.messageContainsOffset = (payloadHeader[0] & 0x8000) === 0x8000 // prettier-ignore
 
           // allocate buffer for the payloadLength
@@ -209,8 +209,8 @@ class BinaryProtocolDecoder extends Transform {
           debug(`\t offset: ${this.messageContainsOffset}`)
 
           this.expectedMessageIDLen = this.headerBuffer[2] & 0x0f // prettier-ignore
-          this.message.query =       (this.headerBuffer[2] & 0x10) === 0x10 // prettier-ignore
-          this.message.ackNum =       this.headerBuffer[2] >>> 5 // prettier-ignore
+          this.message.query = (this.headerBuffer[2] & 0x10) === 0x10 // prettier-ignore
+          this.message.ackNum = this.headerBuffer[2] >>> 5 // prettier-ignore
 
           // allocate buffer for the messageID
           this.messageIDBuffer = Buffer.alloc(this.expectedMessageIDLen)
@@ -235,7 +235,7 @@ class BinaryProtocolDecoder extends Transform {
       case STATE.AWAITING_MESSAGEID:
         debug(
           `Received messageID byte #${this.messageIDCounter + 1}/${
-            this.expectedMessageIDLen
+          this.expectedMessageIDLen
           }: ${Buffer.from([b]).toString('hex')}`,
         )
         // set the messageID buffer byte at the right indice to the byte we just received
@@ -319,7 +319,7 @@ class BinaryProtocolDecoder extends Transform {
       case STATE.AWAITING_PAYLOAD:
         debug(
           `Received payload byte #${this.payloadCounter + 1}/${
-            this.expectedPayloadLength
+          this.expectedPayloadLength
           }: ${Buffer.from([b]).toString('hex')}`,
         )
 
