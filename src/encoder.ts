@@ -87,7 +87,7 @@ export function generatePacket(options: PacketHardware) {
       )
     }
 
-    offsetBuffer = Buffer.from(Uint16Array.from([offset]).buffer)
+    offsetBuffer = Buffer.from(Uint16Array.from([offset]).buffer as ArrayBuffer)
 
     debug(`Offset Buffer is ${offsetBuffer.toString('hex')}`)
   }
@@ -139,7 +139,7 @@ export function generatePacket(options: PacketHardware) {
   payloadHeader[0] |= (offset !== null) ? 0x8000 : 0x00 // prettier-ignore
 
   // generate the buffer from the uint16, it's LE
-  const payloadHeaderBuffer = Buffer.from(payloadHeader.buffer)
+  const payloadHeaderBuffer = Buffer.from(payloadHeader.buffer as ArrayBuffer)
 
   // create the bitfield & type header byte buffer
   let messageHeaderBuffer = Buffer.alloc(1)
