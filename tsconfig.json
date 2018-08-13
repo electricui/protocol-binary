@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "ES2015",
     "esModuleInterop": true,
     "target": "esnext",
     "noImplicitAny": true,
