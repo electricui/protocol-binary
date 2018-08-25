@@ -156,8 +156,9 @@ class BinaryProtocolDecoder extends Transform {
    */
   error = (err: PacketError) => {
     this.message.error = err
-    debug(`Error in state machine ${err}`)
-    this.cycle()
+    debug(`Error in state machine`, err)
+    console.error(`received bad packet`, this.message)
+    this.reset()
   }
 
   /**
@@ -235,7 +236,7 @@ class BinaryProtocolDecoder extends Transform {
       case STATE.AWAITING_MESSAGEID:
         debug(
           `Received messageID byte #${this.messageIDCounter + 1}/${
-          this.expectedMessageIDLen
+            this.expectedMessageIDLen
           }: ${Buffer.from([b]).toString('hex')}`,
         )
         // set the messageID buffer byte at the right indice to the byte we just received
@@ -319,7 +320,7 @@ class BinaryProtocolDecoder extends Transform {
       case STATE.AWAITING_PAYLOAD:
         debug(
           `Received payload byte #${this.payloadCounter + 1}/${
-          this.expectedPayloadLength
+            this.expectedPayloadLength
           }: ${Buffer.from([b]).toString('hex')}`,
         )
 
