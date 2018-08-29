@@ -252,12 +252,8 @@ class BinaryProtocolDecoder extends Transform {
           // Transfer the messageID buffer into the messageID property in the
           // correct type.
 
-          // TODO: Use a config flag to decide this instead of a heuristic
-          if (onlyPrintableCharacters(this.messageIDBuffer)) {
-            this.message.messageID = this.messageIDBuffer.toString('utf8')
-          } else {
-            this.message.messageID = this.messageIDBuffer[0] // TODO: Support more than 255 messageIDs
-          }
+          // TODO: Do we support numbers?
+          this.message.messageID = this.messageIDBuffer.toString('utf8')
 
           debug(`\t messageID: ${this.message.messageID}`)
 
