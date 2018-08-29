@@ -45,6 +45,8 @@ export function generatePacket(options: PacketHardware) {
     payload,
   } = mergedOptions
 
+  debug(`Encoding `, mergedOptions)
+
   // Check that the type is of the correct size, it's a 4 bit int.
   if (type < 0 || type > 15) {
     throw new TypeError(
@@ -91,8 +93,6 @@ export function generatePacket(options: PacketHardware) {
 
     debug(`Offset Buffer is ${offsetBuffer.toString('hex')}`)
   }
-
-  debug(`Payload is ${payload}`)
 
   let payloadBuffer = payload
 
