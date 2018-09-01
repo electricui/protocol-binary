@@ -7,6 +7,7 @@
   "author": "Michael Orenstein <mike@whiteshadows.me>, Scott Rapson <scottapotamas@gmail.com>",
   "license": "See LICENCE",
   "main": "lib/index.js",
+  "main-when-published": "lib/index.js.eui",
   "files": [
     "lib/*",
     "manifest.json"
