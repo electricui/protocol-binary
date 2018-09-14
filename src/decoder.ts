@@ -1,25 +1,17 @@
-import {
-  Transform,
-  TransformOptions
-} from 'stream'
+import { Transform, TransformOptions } from 'stream'
 
 import {
   EVENT_LARGEST_PAYLOAD_SIZE_SEEN,
   EventInterface,
   PacketError,
-  PacketHardware
+  PacketHardware,
 } from '@electricui/protocol-constants'
 import CRC16 from '@electricui/protocol-crc'
 
 import packetDefaults from './defaults'
 import ERRORS from './errors'
-import {
-  TypeCache,
-  uint8
-} from './types'
-import {
-  onlyPrintableCharacters
-} from './utils'
+import { TypeCache, uint8 } from './types'
+import { onlyPrintableCharacters } from './utils'
 
 const debug = require('debug')('electricui-protocol-binary:decoder')
 
@@ -43,6 +35,7 @@ const enum STATE {
 declare interface BinaryProtocolDecoderOptions extends TransformOptions {
   typeCache?: TypeCache
   eventInterface?: EventInterface
+  enableFraming?: boolean
 }
 
 class BinaryProtocolDecoder extends Transform {
@@ -62,6 +55,7 @@ class BinaryProtocolDecoder extends Transform {
   checksumCounter = 0
   largestPayloadSizeSeen = 0
   messageContainsOffset = false
+  enableFraming = false
 
   crc: CRC16
   message: PacketHardware
@@ -110,6 +104,8 @@ class BinaryProtocolDecoder extends Transform {
     this.typeCache = options.typeCache || {}
 
     this.eventInterface = options.eventInterface
+
+    this.enableFraming = options.enableFraming || false
 
     if (process.env.NODE_ENV === 'development') {
       this.largestPayloadSizeSeen = 0
@@ -421,6 +417,12 @@ class BinaryProtocolDecoder extends Transform {
    */
   _transform(chunk: Buffer, encoding: string, callback: Function) {
     debug(`_transform: ${chunk.toString('hex')}`)
+
+    // if this transform doesn't take care of framing, reset the state machine
+    // on every chunk received
+    if (!this.enableFraming) {
+      this.reset()
+    }
 
     for (var i = 0; i < chunk.length; i++) {
       this.step(chunk[i])
