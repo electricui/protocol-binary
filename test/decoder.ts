@@ -1,232 +1,62 @@
+import 'mocha'
+
+import * as chai from 'chai'
 import * as sinon from 'sinon'
 
-import {
-  TYPES
-} from '@electricui/protocol-constants'
+import { Message, Sink, Source, TypeCache } from '@electricui/core'
 
 import BinaryProtocolDecoder from '../src/decoder'
 
-var chai = require('chai')
-var chaiSubset = require('chai-subset')
-chai.use(chaiSubset)
-
 const assert = chai.assert
 
-function validFactory(input: Buffer, expectedSubset = {}) {
-  return () => {
-    const spy = sinon.spy()
-    const parser = new BinaryProtocolDecoder({})
+class TestSink extends Sink {
+  callback: (chunk: any) => void
+  constructor(callback: (chunk: any) => void) {
+    super()
+    this.callback = callback
+  }
 
-    parser.on('data', spy)
-    parser.on('data', d => console.log('received back', d))
-
-    parser.write(input)
-
-    console.log('writing', input)
-
-    const packetObject = spy.getCall(0).args[0]
-
-    assert.containSubset(packetObject, expectedSubset)
-    assert.isUndefined(packetObject.error, 'errored')
+  async receive(chunk: any) {
+    return this.callback(chunk)
   }
 }
 
-function invalidFactory(
-  input: Buffer,
-  expectedError = 'Make sure you define an expected error',
-) {
-  return () => {
-    const spy = sinon.spy()
-    const parser = new BinaryProtocolDecoder({})
+function decodeWithPipeline(testCase: Buffer) {
+  const spy = sinon.spy()
 
-    parser.on('data', spy)
+  const typeCache = new TypeCache()
 
-    parser.write(input)
+  const source = new Source()
+  const decoder = new BinaryProtocolDecoder(typeCache)
+  const sink = new TestSink(spy)
 
-    const packetObject = spy.getCall(0).args[0]
+  source.pipe(decoder).pipe(sink)
 
-    assert.isDefined(packetObject.error)
-    // console.log(packetObject.error)
-    // assert.equal(packetObject.error, expectedError, 'incorrect error found')
-  }
-}
+  source.push(testCase)
 
-function noiseFactory(input: Buffer) {
-  return () => {
-    const spy = sinon.spy()
-    const parser = new BinaryProtocolDecoder({})
-
-    parser.on('data', spy)
-
-    parser.write(input)
-
-    assert.isTrue(spy.notCalled, 'this packet was not validated')
-  }
+  return <Message>spy.getCall(0).args[0]
 }
 
 describe('BinaryProtocolDecoder', () => {
-  xit('correctly decodes two packets out of a stream', () => {
-    const spy = sinon.spy()
-    const parser = new BinaryProtocolDecoder({})
-    parser.on('data', spy)
+  it('correctly decodes a message without an offset', () => {
+    const packet = Buffer.from([
+      0x01,
+      0x14,
+      0x03,
+      0x61,
+      0x62,
+      0x63,
+      0x2a,
+      0x64,
+      0xba,
+    ])
 
-    parser.write(
-      Buffer.from([
-        0x01,
-        0x41,
-        0x68,
-        0x65,
-        0x68,
-        0x02,
-        0x03,
-        0x03,
-        0x03,
-        0x03,
-        0x03,
-        0x24,
-        0x04,
-      ]),
-    )
+    const result = decodeWithPipeline(packet)
 
-    parser.write(
-      Buffer.from([
-        0x01, // SOH
-        0xff, // Header
-        0x66, // messageID - f
-        0x66, // messageID - f
-        0x66, // messageID - f
-        0x02, // STX
-        0x01, // payloadLen = 1
-        0x66, // payload - f
-        0x03, // ETX
-        0xfe, // checksum
-        0x04, // EOT
-      ]),
-    )
-
-    assert.containSubset(spy.getCall(0).args[0], {
-      messageID: 'heh',
-      payload: Buffer.from([0x03, 0x03, 0x03]),
-      type: TYPES.INT16, // this isn't necessarily reflective of the data payload above
-      internal: true,
-      customType: false,
-      ack: false,
-      reservedBit: false,
-    })
-    assert.isUndefined(spy.getCall(0).args[0].error, 'errored')
-
-    assert.containSubset(spy.getCall(1).args[0], {
-      messageID: 'fff',
-      payload: Buffer.from('f'),
-      type: 15, // TODO: What's the enum for this?
-      internal: true,
-      customType: true,
-      ack: true,
-      reservedBit: true,
-    })
-    assert.isUndefined(spy.getCall(1).args[0].error, 'errored')
+    assert.deepEqual(result.messageID, 'abc')
+    assert.deepEqual(result.payload, Buffer.from([42]))
+    assert.deepEqual(result.metadata.internal, false)
+    assert.deepEqual(result.metadata.query, false)
+    assert.deepEqual(result.metadata.type, 5)
   })
-
-  xit('does not throw when provided with no options', () => {
-    assert.doesNotThrow(() => {
-      new BinaryProtocolDecoder({})
-    })
-  })
-
-  xit(
-    'decodes a simple packet',
-    validFactory(
-      Buffer.from([
-        0x01,
-        0x40, // header
-        0x01, // header
-        0x0c, // header
-        0x6c, // msgID
-        0x65, // msgID
-        0x64, // msgID
-        0x02, // payload
-        0x7e, // checksum
-        0x63, // checksum
-        0x04,
-      ]),
-      {
-        messageID: 'led',
-        payload: Buffer.from([0x02]),
-        type: TYPES.UINT8,
-        internal: false,
-        query: false,
-        ack: false,
-        offset: null,
-      },
-    ),
-  )
-
-  xit(
-    'decodes a really big packet',
-    validFactory(
-      Buffer.concat([
-        Buffer.from([
-          0x01, // SOH
-          0xff, // Header
-          0xff, // Header
-          0xff, // Header
-        ]),
-        Buffer.from(Array(15 + 1).join('f')), // 15 0x66s
-        Buffer.from([
-          0xff, // Offset
-          0xff, // Offset
-        ]),
-        Buffer.from(Array(1023 + 1).join('f')), // 1024 0x66s
-        Buffer.from([
-          0x5d, // Checksum
-          0xc4, // Checksum
-          0x04, // EOT
-        ]),
-      ]),
-      {
-        messageID: Array(15 + 1).join('f'),
-        payload: Buffer.from(Array(1023 + 1).join('f')),
-        internal: true,
-        ack: true,
-        query: true,
-        offset: 65535,
-        type: 15,
-        ackNum: 3,
-      },
-    ),
-  )
-
-  xit(
-    'decodes a command style packet with no payload',
-    validFactory(
-      // prettier-ignore
-      Buffer.from([0x01, 0xff, 0x66, 0x66, 0x66, 0x02, 0x00, 0x03, 0x99, 0x04]),
-      {
-        messageID: 'fff',
-        payload: null,
-        type: 15, // TODO: What's the enum for this?
-        internal: true,
-        customType: true,
-        ack: true,
-        reservedBit: true,
-      },
-    ),
-  )
-
-  xit(
-    'decodes a simple packet with 0x10 (\\n) as the payload',
-    validFactory(
-      // prettier-ignore
-      Buffer.from([0x01, 0xff, 0x66, 0x66, 0x66, 0x02, 0x01, 0x10, 0x03, 0x88, 0x04]),
-      {
-        messageID: 'fff',
-        payload: Buffer.from([0x10]),
-        type: 15, // TODO: What's the enum for this?
-        internal: true,
-        customType: true,
-        ack: true,
-        reservedBit: true,
-      },
-    ),
-  )
 })

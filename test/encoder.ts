@@ -1,86 +1,63 @@
 import 'mocha'
 
+import * as chai from 'chai'
 import * as sinon from 'sinon'
+
+import { Message, Sink, Source, TypeCache } from '@electricui/core'
 
 import BinaryProtocolEncoder from '../src/encoder'
 
-var chai = require('chai')
-var chaiSubset = require('chai-subset')
-chai.use(chaiSubset)
-
 const assert = chai.assert
 
+class TestSink extends Sink {
+  callback: (chunk: any) => void
+  constructor(callback: (chunk: any) => void) {
+    super()
+    this.callback = callback
+  }
+
+  async receive(chunk: any) {
+    return this.callback(chunk)
+  }
+}
+
+function encodeWithPipeline(testCase: Message) {
+  const spy = sinon.spy()
+
+  const typeCache = new TypeCache()
+
+  const source = new Source()
+  const encoder = new BinaryProtocolEncoder(typeCache)
+  const sink = new TestSink(spy)
+
+  source.pipe(encoder).pipe(sink)
+
+  source.push(testCase)
+
+  return <Buffer>spy.getCall(0).args[0]
+}
+
 describe('BinaryProtocolEncoder', () => {
-  it('throws when given an empty object', () => {
-    const parser = new BinaryProtocolEncoder({})
+  it('correctly encodes a message without an offset', () => {
+    const message = new Message('abc', Buffer.from([42]))
+    message.metadata.internal = false
+    message.metadata.query = false
+    message.metadata.type = 5
 
-    const funcToCall = () => {
-      parser.write({})
-    }
+    const result = encodeWithPipeline(message)
 
-    assert.throws(funcToCall)
-  })
+    const expected = Buffer.from([
+      0x01,
+      0x14,
+      0x03,
+      0x61,
+      0x62,
+      0x63,
+      0x2a,
+      0x64,
+      0xba,
+    ])
 
-  it('throws when given no arguments', () => {
-    const parser = new BinaryProtocolEncoder({})
-
-    const funcToCall = () => {
-      parser.write({})
-    }
-
-    assert.throws(funcToCall)
-  })
-
-  xit("correctly encodes an object thats mostly 0x00's (smallest packet possible)", () => {
-    const spy = sinon.spy()
-    const parser = new BinaryProtocolEncoder({})
-    parser.on('data', spy)
-
-    parser.write({ messageID: 0 })
-
-    assert.deepEqual(
-      spy.getCall(0).args[0],
-      Buffer.from([0x01, 0x00, 0x00, 0x00, 0x00, 0xc0, 0x84, 0x04]),
-    )
-  })
-
-  xit("correctly encodes an object thats mostly 0xff's", () => {
-    const spy = sinon.spy()
-    const parser = new BinaryProtocolEncoder({})
-    parser.on('data', spy)
-
-    parser.write({
-      internal: true,
-      ack: true,
-      query: true,
-      offset: 65535,
-      type: 15,
-      ackNum: 3,
-      messageID: Array(15 + 1).join('f'),
-      payload: Buffer.from(Array(1023 + 1).join('f')),
-    })
-
-    assert.deepEqual(
-      spy.getCall(0).args[0],
-      Buffer.concat([
-        Buffer.from([
-          0x01, // SOH
-          0xff, // Header
-          0xff, // Header
-          0xff, // Header
-        ]),
-        Buffer.from(Array(15 + 1).join('f')), // 16 0x66s
-        Buffer.from([
-          0xff, // Offset
-          0xff, // Offset
-        ]),
-        Buffer.from(Array(1023 + 1).join('f')), // 1024 0x66s
-        Buffer.from([
-          0x5d, // Checksum
-          0xc4, // Checksum
-          0x04, // EOT
-        ]),
-      ]),
-    )
+    assert.deepEqual(result, expected)
   })
 })

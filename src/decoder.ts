@@ -121,7 +121,7 @@ class BinaryDecoderPipeline extends Pipeline {
       ackNum: this.packet.ackNum,
     }
 
-    return this.push(this.packet)
+    return this.push(message)
   }
 
   /**
