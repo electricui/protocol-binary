@@ -1,78 +1,30 @@
-import {
-  Transform,
-  TransformOptions
-} from 'stream'
-
-import {
-  ACK_NUM,
-  PacketHardware
-} from '@electricui/protocol-constants'
+import { Message, Pipeline, TypeCache } from '@electricui/core'
+import { ACK_NUM } from '@electricui/protocol-binary-constants'
 import CRC16 from '@electricui/protocol-crc'
-
-import packetDefaults from './defaults'
-import {
-  TypeCache,
-  uint8
-} from './types'
 
 const debug = require('debug')('electricui-protocol-binary:encoder')
 
 const BUFFER_SOH = Buffer.from([0x01])
 const BUFFER_EOT = Buffer.from([0x04])
 
-// TODO: Checksums are optional on error-resiliant transports.
-// TODO: Do we add delimiters to aid in fail-fast error checking?
-
 /**
  * Generates an eUI Binary Packet
  * @export
- * @param {object} options, see packetDefaults above for more information.
+ * @param {Message} message
  * @returns {Buffer}
  */
-export function generatePacket(options: PacketHardware) {
+export function encode(message: Message): Buffer {
   // merge the options provided with the defaults
-  const mergedOptions = Object.assign({}, packetDefaults, options)
 
   // destructure them out
-  const {
-    internal,
-    ack,
-    query,
-    offset,
-    type,
-    messageID,
-    ackNum,
-    payload,
-  } = mergedOptions
+  const { type, internal, query, offset, ackNum } = message.metadata
 
-  debug(`Encoding `, mergedOptions)
+  debug(`Encoding `, message)
 
   // Check that the type is of the correct size, it's a 4 bit int.
   if (type < 0 || type > 15) {
     throw new TypeError(
       'eUI Packet Type must have a value between 0 and 15 (inclusive)',
-    )
-  }
-
-  // we need the messageID as a binary buffer, convert it from whatever type
-  // it is right now
-  let messageIDBuffer
-  if (typeof messageID === 'string') {
-    messageIDBuffer = Buffer.from(messageID)
-  } else if (typeof messageID === 'number') {
-    // TODO: Support more than 255 messageIDs
-    if (messageID > 255) {
-      throw new TypeError(
-        'eUI indice based messageIDs must be between 0 and 255 inclusive (for now)',
-      )
-    }
-    // generate the 1 byte buffer from the indice
-    messageIDBuffer = Buffer.from([messageID])
-  } else if (Buffer.isBuffer(messageID)) {
-    messageIDBuffer = messageID
-  } else {
-    throw new TypeError(
-      'eUI Packet MessageID must be either a string, number (between 0 and 255 inclusive) or a Buffer',
     )
   }
 
@@ -89,23 +41,12 @@ export function generatePacket(options: PacketHardware) {
       )
     }
 
-    offsetBuffer = Buffer.from(Uint16Array.from([offset]).buffer as ArrayBuffer)
+    offsetBuffer = Buffer.from(Uint16Array.from([offset]).buffer)
 
     debug(`Offset Buffer is ${offsetBuffer.toString('hex')}`)
   }
 
-  let payloadBuffer = payload
-
-  // TODO: improve this.
-  if (Buffer.isBuffer(payload)) {
-    payloadBuffer = payload
-  } else if (payload === undefined || payload === null) {
-    payloadBuffer = Buffer.from([])
-  } else {
-    payloadBuffer = Buffer.from([payload])
-  }
-
-  const messageIDLength = messageIDBuffer.length
+  const messageIDLength = message.messageID.length
 
   // Check that the messageID length is of the correct size, it's a 4bit int.
   if (messageIDLength <= 0 || messageIDLength > 15) {
@@ -113,6 +54,9 @@ export function generatePacket(options: PacketHardware) {
       'eUI messageID Lengths must be between 1 and 15 (inclusive).',
     )
   }
+
+  const payloadBuffer =
+    message.payload === null ? Buffer.alloc(0) : message.payload
 
   const payloadLength = payloadBuffer.length
 
@@ -139,7 +83,7 @@ export function generatePacket(options: PacketHardware) {
   payloadHeader[0] |= (offset !== null) ? 0x8000 : 0x00 // prettier-ignore
 
   // generate the buffer from the uint16, it's LE
-  const payloadHeaderBuffer = Buffer.from(payloadHeader.buffer as ArrayBuffer)
+  const payloadHeaderBuffer = Buffer.from(payloadHeader.buffer)
 
   // create the bitfield & type header byte buffer
   let messageHeaderBuffer = Buffer.alloc(1)
@@ -148,6 +92,9 @@ export function generatePacket(options: PacketHardware) {
   messageHeaderBuffer[0] |= messageIDLength
   messageHeaderBuffer[0] |= query ? 0x10 : 0x00
   messageHeaderBuffer[0] |= ackNum << 5
+
+  // we need the messageID as a binary buffer instead of a string
+  const messageIDBuffer = Buffer.from(message.messageID)
 
   // generate the checksum
   const crc = new CRC16()
@@ -163,9 +110,12 @@ export function generatePacket(options: PacketHardware) {
   }
 
   // if the offset is there
-  if (offset !== null) {
+  if (offsetBuffer !== null) {
     crc.step(offsetBuffer[0]) // offsetBuffer byte 2
     crc.step(offsetBuffer[1]) // offsetBuffer byte 3
+  } else {
+    // allocate the buffer so we can concatenate it instead of branching later
+    offsetBuffer = Buffer.alloc(0)
   }
 
   // payload CRC
@@ -177,75 +127,43 @@ export function generatePacket(options: PacketHardware) {
 
   const checksumBuffer = crc.readBuffer()
 
-  // Calculate the full packet length, using the actual buffer length
+  // Calculate the full packet length so it can be allocated in one go
   const packetLength =
-    (offset !== null ? 9 : 7) + messageIDLength + payloadLength
+    (offset !== null ? 7 : 5) + messageIDLength + payloadLength
 
   // Generate the packet
-  let packetArray
-
-  if (offset !== null) {
-    packetArray = [
-      BUFFER_SOH,
-      payloadHeaderBuffer,
-      messageHeaderBuffer,
-      messageIDBuffer,
-      offsetBuffer,
-      payloadBuffer,
-      checksumBuffer,
-      BUFFER_EOT,
-    ]
-  } else {
-    packetArray = [
-      BUFFER_SOH,
-      payloadHeaderBuffer,
-      messageHeaderBuffer,
-      messageIDBuffer,
-      payloadBuffer,
-      checksumBuffer,
-      BUFFER_EOT,
-    ]
-  }
+  const packetArray = [
+    payloadHeaderBuffer,
+    messageHeaderBuffer,
+    messageIDBuffer,
+    offsetBuffer,
+    payloadBuffer,
+    checksumBuffer,
+  ]
 
   const packet = Buffer.concat(packetArray, packetLength)
 
   return packet
 }
 
-declare interface BinaryProtocolEncoderOptions extends TransformOptions {
-  typeCache?: TypeCache
-}
-
-class BinaryProtocolEncoder extends Transform {
+export default class BinaryEncoderPipeline extends Pipeline {
   typeCache: TypeCache
-
-  constructor(options: BinaryProtocolEncoderOptions) {
-    options = options || {}
-
-    super(Object.assign(options, { writableObjectMode: true }))
-    this.typeCache = options.typeCache || {}
+  constructor(typeCache: TypeCache) {
+    super()
+    this.typeCache = typeCache
   }
 
-  _transform(packet: PacketHardware, encoding: string, callback: Function) {
-    // non-internal messages utilise a type cache
-    if (!packet.internal) {
-      // extract the type cache entry
-      const cachedTypeData = this.typeCache[packet.messageID]
+  receive(message: Message) {
+    // if it's a developer namespaced packet we check the type cache for a type
+    // and mutate the packet before encoding it
+    if (message.metadata.internal === false) {
+      const cachedTypeData = this.typeCache.get(message.messageID)
 
-      // check if it's valid
-      if (cachedTypeData) {
-        // annotate the packet with the cached type data
-        this.push(
-          generatePacket(Object.assign({}, { type: cachedTypeData }, packet)),
-        )
-        return callback()
+      if (cachedTypeData !== undefined) {
+        message.metadata.type = cachedTypeData
       }
     }
 
-    // raw sends
-    this.push(generatePacket(packet))
-    callback()
+    return this.push(encode(message))
   }
 }
-
-export default BinaryProtocolEncoder

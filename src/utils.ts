@@ -1,6 +1,5 @@
 /**
  * Checks if a buffer is made of exclusively ascii printable characters.
-
  */
 export function onlyPrintableCharacters(buffer: Buffer): boolean {
   for (let i = 0; i < buffer.length; i++) {
