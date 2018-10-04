@@ -46,9 +46,7 @@ function roundTripFactory() {
 }
 const alphabet =
   'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-const randomMessageID = () => {
-  const length = Math.floor(Math.random() * 15 + 1)
-
+const randomMessageID = (length: number) => {
   return Array(length)
     .join()
     .split(',')
@@ -59,22 +57,25 @@ const randomMessageID = () => {
 const randomBool = () => {}
 
 describe('Binary Protocol Fuzz Testing', () => {
-  it('correctly encodes and decodes 10,000 messages', async () => {
+  it('correctly encodes and decodes messages at every payload length', async () => {
     const { source, spy } = roundTripFactory()
 
-    for (let index = 0; index < 10000; index++) {
-      const payloadLength = Math.floor(Math.random() * 1023)
+    let messageIDLength = Math.floor(Math.random() * 15 + 1)
+
+    for (let payloadLength = 0; payloadLength <= 1023; payloadLength++) {
+      if (messageIDLength > 15) messageIDLength = 0
+
       const message = new Message(
-        randomMessageID(),
+        randomMessageID(messageIDLength++),
         pseudoRandomBytes(payloadLength),
       )
 
       message.metadata = {
-        type: random.number(14),
+        type: random.number(15),
         internal: random.boolean(),
         query: random.boolean(),
         offset: random.boolean() ? null : random.number(65535),
-        ackNum: random.number(3),
+        ackNum: random.number(7),
       }
 
       delete message.metadata.ack
@@ -85,9 +86,9 @@ describe('Binary Protocol Fuzz Testing', () => {
 
       await source.push(message)
 
-      const result = spy.getCall(index).args[0]
+      const result = spy.getCall(payloadLength).args[0]
 
       assert.deepEqual(result, message)
     }
-  }).timeout(10000)
+  })
 })
