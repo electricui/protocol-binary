@@ -23,6 +23,8 @@
   },
   "devDependencies": {
     "benchr": "^4.3.0",
+    "faker": "^4.1.0",
+    "@types/faker": "^4.1.4",
     "@electricui/protocol-type-transforms": "^0.3.18",
     "performance-now": "^2.1.0",
     "serialport": "^6.0.0",
