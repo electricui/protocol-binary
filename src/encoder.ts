@@ -61,9 +61,9 @@ export function encode(message: Message): Buffer {
   const payloadLength = payloadBuffer.length
 
   // Check that the payload length is of the correct size, it's a 10bit int.
-  if (payloadLength < 0 || payloadLength > 1024) {
+  if (payloadLength < 0 || payloadLength > 1023) {
     throw new TypeError(
-      'eUI payload lengths must be between 0 and 1024 (inclusive).',
+      'eUI payload lengths must be between 0 and 1023 (inclusive).',
     )
   }
 
