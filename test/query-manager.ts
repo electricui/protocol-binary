@@ -26,18 +26,6 @@ chai.use(chaiAsPromised)
 
 const assert = chai.assert
 
-class TestSink extends Sink {
-  callback: (chunk: any) => void
-  constructor(callback: (chunk: any) => void) {
-    super()
-    this.callback = callback
-  }
-
-  async receive(chunk: any) {
-    return this.callback(chunk)
-  }
-}
-
 type fakeDevice = (message: Message) => Array<Message> | null
 
 function factory(receiveDataCallback: fakeDevice) {

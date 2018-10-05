@@ -71,6 +71,7 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
 
     const searchMessage = new Message(MESSAGEIDS.SEARCH, null)
     searchMessage.metadata.type = TYPES.CALLBACK
+    searchMessage.metadata.internal = true
 
     connection
       .write(searchMessage)
