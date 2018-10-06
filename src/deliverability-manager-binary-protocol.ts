@@ -5,7 +5,7 @@ interface DeliverabilityManagerBinaryProtocolOptions {
   timeout?: number
 }
 
-export class DeliverabilityManagerBinaryProtocol extends DeliverabilityManager {
+export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityManager {
   timeout: number
 
   constructor(options: DeliverabilityManagerBinaryProtocolOptions) {

@@ -56,7 +56,6 @@
     "postpack": "silversmith postpack",
     "test": "export TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\"}' && nyc mocha --compilers ts:ts-node/register && export TS_NODE_COMPILER_OPTIONS=\"\"",
     "benchmark": "benchr benchmarks/*",
-    "hardwaretest": "ts-node test_hardware.ts",
     "build": "rollup -c"
   }
 }

@@ -30,7 +30,7 @@ interface StatusContext {
   completed: boolean
 }
 
-class BinaryDecoderPipeline extends Pipeline {
+export default class BinaryDecoderPipeline extends Pipeline {
   state = STATE.AWAITING_HEADER
   headerBuffer = Buffer.alloc(3)
   headerCounter = 0 // 0 - 2 for 3 bytes of header
@@ -394,5 +394,3 @@ class BinaryDecoderPipeline extends Pipeline {
     return Promise.reject('Received garbage')
   }
 }
-
-export default BinaryDecoderPipeline

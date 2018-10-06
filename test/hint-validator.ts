@@ -81,7 +81,6 @@ type fakeDevice = (message: Message) => Array<Message> | null
 
 function factory(receiveDataCallback: fakeDevice) {
   const deviceManager = new DeviceManager()
-  const discoveryManager = deviceManager.discoveryManager
 
   const producer = new MockDiscoveryHintProducer()
   producer.transportKey = 'mock'
@@ -105,9 +104,9 @@ function factory(receiveDataCallback: fakeDevice) {
     },
   })
 
-  discoveryManager.addHintProducers([producer])
-  discoveryManager.addHintConsumers([consumer])
-  discoveryManager.setCreateHintValidatorsCallback(
+  deviceManager.addHintProducers([producer])
+  deviceManager.addHintConsumers([consumer])
+  deviceManager.setCreateHintValidatorsCallback(
     (hint: Hint, connection: Connection) => {
       const validator = new HintValidatorBinaryHandshake(hint, connection, 500)
 

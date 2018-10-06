@@ -73,8 +73,9 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     searchMessage.metadata.type = TYPES.CALLBACK
     searchMessage.metadata.internal = true
 
-    connection
-      .write(searchMessage)
+    const writePromise = connection.write(searchMessage)
+
+    writePromise
       .then(() => {
         return waitForReply
       })
@@ -82,7 +83,9 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
         subscriptionInternal.unsubscribe()
         subscriptionDeveloper.unsubscribe()
 
-        const candidate = new DeviceCandidate(reply.payload, this.connection)
+        const boardID = String(reply.payload)
+
+        const candidate = new DeviceCandidate(boardID, this.connection)
 
         candidate.setMetadata({
           internal,
