@@ -42,10 +42,15 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
       })
 
     // we require both a successful send and a successful ack
-    return Promise.all([queryPush, waitForReply]).then(result => {
-      const [queryResult, waitForReplyResult] = result
+    return Promise.all([queryPush, waitForReply])
+      .then(result => {
+        const [queryResult, waitForReplyResult] = result
 
-      return waitForReplyResult
-    })
+        return waitForReplyResult
+      })
+      .catch(err => {
+        console.log('Had an error in QueryManagerBinaryProtocol')
+        console.error(err)
+      })
   }
 }

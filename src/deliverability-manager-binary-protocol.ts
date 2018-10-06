@@ -45,6 +45,8 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
     })
 
     // we require both a successful send and a successful ack
-    return Promise.all([queryPush, waitForReply])
+    return Promise.all([queryPush, waitForReply]).catch(err => {
+      console.log("Couldn't deliver message ", err)
+    })
   }
 }
