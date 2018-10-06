@@ -5,6 +5,10 @@ interface QueryManagerBinaryProtocolOptions {
   timeout?: number
 }
 
+const dQueryManager = require('debug')(
+  'electricui-protocol-binary:query-manager',
+)
+
 export default class QueryManagerBinaryProtocol extends QueryManager {
   timeout: number
 
@@ -20,6 +24,8 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
       return this.connectionInterface.writePipeline.push(message)
     }
 
+    dQueryManager(`writing query ${message.messageID}`)
+
     const connection = this.connectionInterface.getConnection()
 
     const { promise: waitForReply, cancel } = connection.waitForReply(
@@ -31,7 +37,7 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
           replyMessage.metadata.query === false
         )
       },
-      this.timeout,
+      // this.timeout, // TODO add back timeouts
     )
 
     const queryPush = this.connectionInterface.writePipeline
@@ -41,16 +47,22 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
         cancel()
       })
 
-    // we require both a successful send and a successful ack
-    return Promise.all([queryPush, waitForReply])
-      .then(result => {
-        const [queryResult, waitForReplyResult] = result
+    dQueryManager(`pushing query`)
 
-        return waitForReplyResult
-      })
+    // we require both a successful send and a successful ack
+    return Promise.all([queryPush, waitForReply]).then(result => {
+      const [queryResult, waitForReplyResult] = result
+
+      dQueryManager(`queryResult`, queryResult)
+      dQueryManager(`waitForReplyResult`, waitForReplyResult)
+
+      return waitForReplyResult
+    })
+    /*
       .catch(err => {
         console.log('Had an error in QueryManagerBinaryProtocol')
         console.error(err)
       })
+    */
   }
 }
