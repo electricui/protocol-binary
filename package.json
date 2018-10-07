@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@electricui/protocol-binary-constants": "^0.3.18",
-    "@electricui/protocol-crc": "^0.3.18",
+    "@electricui/utility-crc16": "^0.3.18",
     "@electricui/core": "^0.3.18",
     "debug": "^3.1.0"
   },
@@ -25,7 +25,6 @@
     "benchr": "^4.3.0",
     "faker": "^4.1.0",
     "@types/faker": "^4.1.4",
-    "@electricui/protocol-type-transforms": "^0.3.18",
     "performance-now": "^2.1.0",
     "serialport": "^6.0.0",
     "@types/chai": "^4.1.6",

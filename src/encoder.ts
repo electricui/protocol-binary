@@ -1,6 +1,6 @@
 import { Message, Pipeline, TypeCache } from '@electricui/core'
 import { ACK_NUM } from '@electricui/protocol-binary-constants'
-import CRC16 from '@electricui/protocol-crc'
+import { CRC16 } from '@electricui/utility-crc16'
 
 const debug = require('debug')('electricui-protocol-binary:encoder')
 

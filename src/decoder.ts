@@ -1,5 +1,5 @@
 import { Message, Pipeline, TypeCache } from '@electricui/core'
-import CRC16 from '@electricui/protocol-crc'
+import { CRC16 } from '@electricui/utility-crc16'
 
 import ERRORS from './errors'
 
