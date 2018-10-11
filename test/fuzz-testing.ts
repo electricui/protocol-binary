@@ -54,8 +54,6 @@ const randomMessageID = (length: number) => {
     .join('')
 }
 
-const randomBool = () => {}
-
 describe('Binary Protocol Fuzz Testing', () => {
   it('correctly encodes and decodes messages at every payload length', async () => {
     const { source, spy } = roundTripFactory()
@@ -66,8 +64,8 @@ describe('Binary Protocol Fuzz Testing', () => {
       if (messageIDLength > 15) messageIDLength = 0
 
       const message = new Message(
-        randomMessageID(messageIDLength++),
-        pseudoRandomBytes(payloadLength),
+        'hey', //randomMessageID(messageIDLength++),
+        Buffer.from([0x00]), //pseudoRandomBytes(payloadLength),
       )
 
       message.metadata = {
