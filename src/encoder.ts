@@ -55,6 +55,13 @@ export function encode(message: Message): Buffer {
     )
   }
 
+  if (message.payload === null) {
+    console.log(
+      "this shouldn't have happened, the message payload was null",
+      message,
+    )
+  }
+
   const payloadBuffer =
     message.payload === null ? Buffer.alloc(0) : message.payload
 
