@@ -22,8 +22,12 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
       return queryManager.push(message)
     }
 
-    // mutate the ack bit
+    // mutate the ack bit and query bit
+    message.metadata.query = true
     message.metadata.ackNum = 2
+
+    // copy the payload at this stage to re-inject later
+    const copiedPayload = message.payload
 
     const connection = this.connectionInterface.getConnection()
 
@@ -39,14 +43,29 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
       this.timeout,
     )
 
+    // in the event of a push failure, cancel the waitForReply
     const queryPush = queryManager.push(message).catch(() => {
-      // in the event of a push failure, cancel the waitForReply
       cancel()
     })
 
+    // ack reply received, push the data to the device
+    const ackReceived = waitForReply.then(res => {
+      if (this.connectionInterface.device !== null) {
+        // use the copied payload
+        const fakeMessage = new Message(message.messageID, copiedPayload)
+        fakeMessage.metadata.query = false
+        fakeMessage.metadata.ackNum = 0
+        fakeMessage.metadata.internal = message.metadata.internal
+        fakeMessage.metadata.type = message.metadata.type
+
+        this.connectionInterface.device.receive(fakeMessage)
+      }
+    })
+
     // we require both a successful send and a successful ack
-    return Promise.all([queryPush, waitForReply]).catch(err => {
+    return Promise.all([queryPush, ackReceived]).catch(err => {
       console.log("Couldn't deliver message ", err)
+      throw err
     })
   }
 }
