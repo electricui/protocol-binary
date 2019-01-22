@@ -58,7 +58,6 @@ export default class BinaryDecoderPipeline extends Pipeline {
     offset: null,
     ackNum: 0,
   }
-  typeCache: TypeCache
 
   /**
    * Resets the internal state of the state machine
@@ -98,10 +97,9 @@ export default class BinaryDecoderPipeline extends Pipeline {
     this.crc.reset()
   }
 
-  constructor(typeCache: TypeCache) {
+  constructor() {
     super()
     this.crc = new CRC16()
-    this.typeCache = typeCache
   }
 
   /**
@@ -335,12 +333,6 @@ export default class BinaryDecoderPipeline extends Pipeline {
               }`,
             )
             break
-          }
-
-          // we're finished
-          // Deal with the type cache
-          if (!this.packet.internal) {
-            this.typeCache.set(this.packet.messageID, this.packet.type)
           }
 
           // notify the pipeline we parsed a packet

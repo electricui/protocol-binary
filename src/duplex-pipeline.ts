@@ -9,14 +9,10 @@ import BinaryEncoderPipeline from './encoder'
 export default class BinaryPipeline extends DuplexPipeline {
   readPipeline: BinaryDecoderPipeline
   writePipeline: BinaryEncoderPipeline
-  typeCache: TypeCache
-
-  constructor(typeCache: TypeCache) {
+  constructor() {
     super()
 
-    this.typeCache = typeCache
-
-    this.readPipeline = new BinaryDecoderPipeline(typeCache)
-    this.writePipeline = new BinaryEncoderPipeline(typeCache)
+    this.readPipeline = new BinaryDecoderPipeline()
+    this.writePipeline = new BinaryEncoderPipeline()
   }
 }

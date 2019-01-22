@@ -10,3 +10,4 @@ export {
 export {
   default as QueryManagerBinaryProtocol,
 } from './src/query-manager-binary-protocol'
+export { default as BinaryTypeCachePipeline } from './src/typecache-pipeline'

@@ -147,23 +147,11 @@ export function encode(message: Message): Buffer {
 }
 
 export default class BinaryEncoderPipeline extends Pipeline {
-  typeCache: TypeCache
-  constructor(typeCache: TypeCache) {
+  constructor() {
     super()
-    this.typeCache = typeCache
   }
 
   receive(message: Message) {
-    // if it's a developer namespaced packet we check the type cache for a type
-    // and mutate the packet before encoding it
-    if (message.metadata.internal === false) {
-      const cachedTypeData = this.typeCache.get(message.messageID)
-
-      if (cachedTypeData !== undefined) {
-        message.metadata.type = cachedTypeData
-      }
-    }
-
     return this.push(encode(message))
   }
 }
