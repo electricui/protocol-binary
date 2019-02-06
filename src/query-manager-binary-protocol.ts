@@ -24,6 +24,11 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
       return this.connectionInterface.writePipeline.push(message)
     }
 
+    // if there's a query bit, but the ackNum is set, then it's not actually a query
+    if (message.metadata.ackNum > 0) {
+      return this.connectionInterface.writePipeline.push(message)
+    }
+
     dQueryManager(`writing query ${message.messageID}`)
 
     const connection = this.connectionInterface.getConnection()
