@@ -33,12 +33,15 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
 
     const connection = this.connectionInterface.getConnection()
 
+    // Hold a copy of the messageID in this stack frame in case it mutates underneath us.
+    const desiredMessageID = message.messageID
+
     const { promise: waitForReply, cancel } = connection.waitForReply(
       (replyMessage: Message) => {
         // wait for a reply with the same ackNum and messageID
 
         return (
-          replyMessage.messageID === message.messageID &&
+          replyMessage.messageID === desiredMessageID &&
           replyMessage.metadata.query === false
         )
       },
