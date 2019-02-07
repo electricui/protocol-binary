@@ -1,4 +1,23 @@
 import { DuplexPipeline, Message, Pipeline, TypeCache } from '@electricui/core'
+import { MESSAGEIDS, TYPES } from '@electricui/protocol-binary-constants'
+
+const internalTypes = {
+  [MESSAGEIDS.LIBRARY_VERSION]: TYPES.UINT8,
+  [MESSAGEIDS.BOARD_IDENTIFIER]: TYPES.UINT16,
+  [MESSAGEIDS.SESSION_IDENTIFIER]: TYPES.UINT8,
+  // [MESSAGEIDS.ERROR]: 'e',
+  [MESSAGEIDS.HEARTBEAT]: TYPES.UINT8,
+  // [MESSAGEIDS.DEFAULT_INTERFACE]: 'k',
+  [MESSAGEIDS.SEARCH]: TYPES.CALLBACK,
+  [MESSAGEIDS.READONLY_MESSAGEIDS_REQUEST_LIST]: TYPES.CALLBACK,
+  [MESSAGEIDS.READONLY_MESSAGEIDS_REQUEST_MESSAGE_OBJECTS]: TYPES.CALLBACK,
+  [MESSAGEIDS.READONLY_MESSAGEIDS_ITEM]: TYPES.CUSTOM_MARKER,
+  [MESSAGEIDS.READONLY_MESSAGEIDS_COUNT]: TYPES.UINT8,
+  [MESSAGEIDS.READWRITE_MESSAGEIDS_REQUEST_LIST]: TYPES.CALLBACK,
+  [MESSAGEIDS.READWRITE_MESSAGEIDS_REQUEST_MESSAGE_OBJECTS]: TYPES.CALLBACK,
+  [MESSAGEIDS.READWRITE_MESSAGEIDS_ITEM]: TYPES.CUSTOM_MARKER,
+  [MESSAGEIDS.READWRITE_MESSAGEIDS_COUNT]: TYPES.UINT8,
+}
 
 /**
  * The type cache encoder pipeline, applies the type information from the cache
@@ -18,6 +37,25 @@ class BinaryTypeCacheEncoderPipeline extends Pipeline {
 
       if (cachedTypeData !== undefined) {
         message.metadata.type = cachedTypeData
+      }
+    } else {
+      // we need to inject the type for internal messages
+
+      const internalMessageID = message.messageID as keyof typeof internalTypes
+
+      if (typeof internalTypes[internalMessageID] === 'undefined') {
+        console.warn(
+          "Using an internal message that we don't know about",
+          message,
+        )
+        console.trace()
+      } else if (internalTypes[internalMessageID] !== message.metadata.type) {
+        // it's the wrong type and we know that
+        console.warn('This message has an incorrect type I think', message)
+        console.trace()
+        // Set it,
+        message.metadata.type = internalTypes[internalMessageID]
+        // TODO: Remove the warning above when we're in stage 1
       }
     }
 
