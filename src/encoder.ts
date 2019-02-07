@@ -81,6 +81,16 @@ export function encode(message: Message): Buffer {
     )
   }
 
+  // Check that the payload is a bufer at this stage
+  if (!Buffer.isBuffer(payloadBuffer)) {
+    throw new TypeError(
+      `The binary encoder received a payload that isn't a buffer. 
+      Perhaps the type cache is not set up correctly, or this is an 
+      internal message missing the correct type annotations.
+      .`,
+    )
+  }
+
   // create the payloadLength, type, internal, offset header
   let payloadHeader = Uint16Array.from([0x0000])
 
