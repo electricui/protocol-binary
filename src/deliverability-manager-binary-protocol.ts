@@ -12,7 +12,7 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
   constructor(options: DeliverabilityManagerBinaryProtocolOptions) {
     super(options.connectionInterface)
 
-    this.timeout = options.timeout || 1000 // 1 second timeout for acks
+    this.timeout = options.timeout || 5000 // 5 second timeout for acks
   }
 
   push(message: Message) {
@@ -51,18 +51,6 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
       (replyMessage: Message) => {
         // wait for a reply with the same ackNum and messageID
 
-        if (
-          replyMessage.messageID === desiredMessageID &&
-          replyMessage.metadata.ackNum !== desiredackNum
-        ) {
-          console.warn(
-            'got the wrong ackNum back, wtf? got',
-            replyMessage.metadata.ackNum,
-            'wanted',
-            desiredackNum,
-          )
-        }
-
         return (
           // we want it to be the same messageID
           replyMessage.messageID === desiredMessageID &&
@@ -86,7 +74,7 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
         // use the copied payload
         const fakeMessage = new Message(message.messageID, copiedPayload)
         fakeMessage.metadata.query = false
-        fakeMessage.metadata.ackNum = 0
+        fakeMessage.metadata.ackNum = desiredackNum
         fakeMessage.metadata.internal = message.metadata.internal
         fakeMessage.metadata.type = message.metadata.type
 
