@@ -74,21 +74,14 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     searchMessage.metadata.type = TYPES.CALLBACK
     searchMessage.metadata.internal = true
 
-    connection
-      .write(searchMessage)
-      .catch(err => {
-        //console.warn('writing the search message errored with ', err)
-      })
-      .then(() => waitForReply) // wait for the reply now
-      .catch(err => {
-        //console.warn('waitForReply errored with ', err)
-      })
-      .then(reply => {
-        subscriptionInternal.unsubscribe()
-        subscriptionDeveloper.unsubscribe()
+    const write = connection.write(searchMessage)
 
-        if (reply) {
-          const boardID = String(reply.payload)
+    const promises = Promise.all([write, waitForReply])
+
+    promises
+      .then(([writeResult, replyResult]) => {
+        if (replyResult) {
+          const boardID = String(replyResult.payload)
 
           const candidate = new DeviceCandidate(boardID, this.connection)
 
@@ -100,7 +93,13 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
           this.pushDeviceCandidate(candidate)
         }
       })
+      .catch(err => {
+        // console.warn('waitForReply errored with ', err)
+        // TODO: Log this
+      })
       .finally(() => {
+        subscriptionInternal.unsubscribe()
+        subscriptionDeveloper.unsubscribe()
         this.complete()
       })
   }
