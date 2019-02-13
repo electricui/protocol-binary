@@ -69,7 +69,8 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
       subscriptionDeveloper.unsubscribe()
     }
 
-    const searchMessage = new Message(MESSAGEIDS.SEARCH, null)
+    // Send an empty buffer instead of a null
+    const searchMessage = new Message(MESSAGEIDS.SEARCH, Buffer.alloc(0))
     searchMessage.metadata.type = TYPES.CALLBACK
     searchMessage.metadata.internal = true
 
