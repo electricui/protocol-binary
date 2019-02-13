@@ -81,6 +81,8 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     promises
       .then(([writeResult, replyResult]) => {
         if (replyResult) {
+          console.log('hint validator reply result ', writeResult, replyResult)
+
           const boardID = String(replyResult.payload)
 
           const candidate = new DeviceCandidate(boardID, this.connection)
