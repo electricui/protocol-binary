@@ -11,6 +11,10 @@ interface Metadata {
   [key: string]: any
 }
 
+const dBinaryHandshake = require('debug')(
+  'electricui-protocol-binary:handshake',
+)
+
 export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator {
   timeout: number
 
@@ -28,6 +32,8 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
   startValidation() {
     const connection = this.connection
 
+    dBinaryHandshake(`Starting binary handshake over ${connection.getHash()}`)
+
     const observableInternal = connection.createObservable(
       (message: Message) => {
         return message.metadata.internal
@@ -44,11 +50,13 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
 
     const subscriptionInternal = observableInternal.subscribe(
       (message: Message) => {
+        dBinaryHandshake(`Received an internal message during the handshake`)
         internal[message.messageID] = message.payload
       },
     )
     const subscriptionDeveloper = observableDeveloper.subscribe(
       (message: Message) => {
+        dBinaryHandshake(`Received a developer message during the handshake`)
         developer[message.messageID] = message.payload
       },
     )
@@ -76,10 +84,14 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
 
     const write = connection.write(searchMessage)
 
+    dBinaryHandshake(`Sending search packet ${MESSAGEIDS.SEARCH}`)
     const promises = Promise.all([write, waitForReply])
 
     promises
       .then(([writeResult, replyResult]) => {
+
+        dBinaryHandshake(`Received a writeResult and a replyResult`, writeResult, replyResult)
+
         if (replyResult) {
           console.log('hint validator reply result ', writeResult, replyResult)
 
@@ -97,11 +109,12 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
       })
       .catch(err => {
         // console.warn('waitForReply errored with ', err)
-        // TODO: Log this
+        dBinaryHandshake(`waitForReply errored with`, err)
       })
       .finally(() => {
         subscriptionInternal.unsubscribe()
         subscriptionDeveloper.unsubscribe()
+        dBinaryHandshake(`Exiting binary handshake`)
         this.complete()
       })
   }
