@@ -43,7 +43,9 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
       return this.connectionInterface.writePipeline.push(message)
     }
 
-    dQueryManager(`writing query ${message.messageID}`)
+    dQueryManager(
+      `writing query ${message.messageID} with a timeout of ${this.timeout}ms`,
+    )
 
     const connection = this.connectionInterface.getConnection()
 
@@ -59,7 +61,7 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
           replyMessage.metadata.query === false
         )
       },
-      // this.timeout, // TODO add back timeouts
+      this.timeout,
     )
 
     const queryPush = this.connectionInterface.writePipeline
@@ -72,19 +74,18 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
     dQueryManager(`pushing query`)
 
     // we require both a successful send and a successful ack
-    return Promise.all([queryPush, waitForReply]).then(result => {
-      const [queryResult, waitForReplyResult] = result
+    return Promise.all([queryPush, waitForReply])
+      .then(result => {
+        const [queryResult, waitForReplyResult] = result
 
-      dQueryManager(`queryResult`, queryResult)
-      dQueryManager(`waitForReplyResult`, waitForReplyResult)
+        dQueryManager(`queryResult`, queryResult)
+        dQueryManager(`waitForReplyResult`, waitForReplyResult)
 
-      return waitForReplyResult
-    })
-    /*
-      .catch(err => {
-        console.log('Had an error in QueryManagerBinaryProtocol')
-        console.error(err)
+        return waitForReplyResult
       })
-    */
+      .catch(err => {
+        dQueryManager("Couldn't get query ", err)
+        throw err
+      })
   }
 }

@@ -38,14 +38,21 @@ function factory(receiveDataCallback: fakeDevice) {
     receivedDataSpy(message)
     const replies = receiveDataCallback(message)
 
+    const promises: Promise<any>[] = []
+
     if (replies !== null) {
       // send the reply back up the pipeline asynchronously
 
       for (const reply of replies) {
-        setImmediate(() => {
-          transport.readPipeline.push(reply)
+        const promise = new Promise((resolve, reject) => {
+          setImmediate(() => {
+            transport.readPipeline.push(reply).then(res => resolve(res))
+          })
         })
+        promises.push(promise)
       }
+
+      return Promise.all(promises)
     }
   }
 
@@ -71,7 +78,13 @@ function factory(receiveDataCallback: fakeDevice) {
   connectionInterface.generateHash()
   connectionInterface.finalise()
 
-  const connection = new Connection({ connectionInterface })
+  const deviceManager = new DeviceManager()
+  const connection = new Connection({
+    connectionInterface,
+    deviceManager,
+    connectionStateUpdateCallback: () => {},
+    connectionUsageRequestUpdateCallback: () => {},
+  })
 
   return {
     receivedDataSpy,
@@ -113,11 +126,18 @@ describe('Binary Protocol Query Manager', () => {
     const messageAck = new Message('ack', null)
     messageAck.metadata.query = true
 
-    const noAckWrite = connection.write(messageAck)
+    let caught = false
+
+    const noAckWrite = connection.write(messageAck).catch(err => {
+      // we expect this to happen
+      caught = true
+    })
+
+    await noAckWrite
 
     await connection.removeUsageRequest('test')
 
-    return assert.isRejected(noAckWrite)
+    assert.isTrue(caught)
   })
   it('it resolves when a reply is received', async () => {
     const device = (message: Message) => {
@@ -170,9 +190,3 @@ describe('Binary Protocol Query Manager', () => {
     assert.strictEqual(reply.payload, 42)
   })
 })
-
-/*
-  const messageAck = new Message('ack', 1)
-  messageAck.metadata.ack = true
-  connection.write(messageAck)
-*/

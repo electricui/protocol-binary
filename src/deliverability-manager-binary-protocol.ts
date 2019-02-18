@@ -6,6 +6,9 @@ interface DeliverabilityManagerBinaryProtocolOptions {
   timeout?: number
 }
 
+const dDeliverabilityManager = require('debug')(
+  'electricui-protocol-binary:deliverability-manager',
+)
 export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityManager {
   timeout: number
 
@@ -84,7 +87,7 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
 
     // we require both a successful send and a successful ack
     return Promise.all([queryPush, ackReceived]).catch(err => {
-      console.log("Couldn't deliver message ", err)
+      dDeliverabilityManager("Couldn't deliver message ", err)
       throw err
     })
   }

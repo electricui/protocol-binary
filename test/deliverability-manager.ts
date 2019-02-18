@@ -20,7 +20,7 @@ import {
 } from '@electricui/core'
 
 import BinaryProtocolDecoder from '../src/decoder'
-import { DeliverabilityManagerBinaryProtocol } from '../src/deliverability-manager-binary-protocol'
+import DeliverabilityManagerBinaryProtocol from '../src/deliverability-manager-binary-protocol'
 import BinaryProtocolEncoder from '../src/encoder'
 import MockTransport from './fixtures/mock-transport'
 
@@ -53,14 +53,21 @@ function factory(receiveDataCallback: fakeDevice) {
     receivedDataSpy(message)
     const replies = receiveDataCallback(message)
 
+    const promises: Promise<any>[] = []
+
     if (replies !== null) {
       // send the reply back up the pipeline asynchronously
 
       for (const reply of replies) {
-        setImmediate(() => {
-          transport.readPipeline.push(reply)
+        const promise = new Promise((resolve, reject) => {
+          setImmediate(() => {
+            transport.readPipeline.push(reply).then(res => resolve(res))
+          })
         })
+        promises.push(promise)
       }
+
+      return Promise.all(promises)
     }
   }
 
@@ -84,7 +91,13 @@ function factory(receiveDataCallback: fakeDevice) {
   connectionInterface.generateHash()
   connectionInterface.finalise()
 
-  const connection = new Connection({ connectionInterface })
+  const deviceManager = new DeviceManager()
+  const connection = new Connection({
+    connectionInterface,
+    deviceManager,
+    connectionStateUpdateCallback: () => {},
+    connectionUsageRequestUpdateCallback: () => {},
+  })
 
   return {
     receivedDataSpy,
@@ -108,7 +121,14 @@ describe('Binary Protocol Deliverability Manager', () => {
 
     const noAckWrite = connection.write(messageNoAck)
 
+    await noAckWrite
+
     await connection.removeUsageRequest('test')
+
+    assert.isTrue(
+      messageNoAck.metadata.ackNum === 0,
+      "The ack num was mutated when it shouldn't have been",
+    )
 
     assert.isFulfilled(noAckWrite)
   })
@@ -116,9 +136,15 @@ describe('Binary Protocol Deliverability Manager', () => {
   it('it mutates the ackNum when the ack bit is set', async () => {
     let ackNum = 0
     const device = (message: Message) => {
-      // do not reply, but set the ackNum variable above so we can assert it
+      // check the ackNum incoming
       ackNum = message.metadata.ackNum
-      return null
+
+      // Reply with the ack packet
+      const reply = new Message(message.messageID, null)
+      reply.metadata.ackNum = message.metadata.ackNum
+      reply.metadata.query = false
+
+      return [reply]
     }
 
     const { receivedDataSpy, connection } = factory(device)
@@ -132,9 +158,17 @@ describe('Binary Protocol Deliverability Manager', () => {
 
     await connection.removeUsageRequest('test')
 
-    assert.isTrue(ackNum > 0)
+    assert.isTrue(
+      messageAck.metadata.ackNum > 0,
+      "The outgoing ack num wasn't mutated when it should have been",
+    )
 
-    return assert.isRejected(noAckWrite)
+    assert.isTrue(
+      ackNum > 0,
+      "The device incoming ack number wasn't mutated when it should have been",
+    )
+
+    return assert.isFulfilled(noAckWrite)
   })
 
   it('it rejects after the timeout when no reply is received', async () => {
@@ -150,11 +184,19 @@ describe('Binary Protocol Deliverability Manager', () => {
     const messageAck = new Message('ack', 1)
     messageAck.metadata.ack = true
 
-    const noAckWrite = connection.write(messageAck)
+    let caught = false
+
+    const noAckWrite = connection.write(messageAck).catch(err => {
+      // we expect this to happen
+      caught = true
+    })
+
+    await noAckWrite
 
     await connection.removeUsageRequest('test')
 
-    return assert.isRejected(noAckWrite)
+    assert.isTrue(caught)
+    assert.isRejected(noAckWrite)
   })
   it('it resolves when a reply is received', async () => {
     const device = (message: Message) => {
@@ -175,9 +217,10 @@ describe('Binary Protocol Deliverability Manager', () => {
 
     const ackWrite = connection.write(messageAck)
 
+    await ackWrite
     await connection.removeUsageRequest('test')
 
-    return assert.isFulfilled(ackWrite)
+    assert.isFulfilled(ackWrite)
   })
   it('it resolves when a reply is received and is resiliant to a noisy connection', async () => {
     const device = (message: Message) => {

@@ -24,10 +24,8 @@ class TestSink extends Sink {
 function decodeWithPipeline(testCase: Buffer) {
   const spy = sinon.spy()
 
-  const typeCache = new TypeCache()
-
   const source = new Source()
-  const decoder = new BinaryProtocolDecoder(typeCache)
+  const decoder = new BinaryProtocolDecoder()
   const sink = new TestSink(spy)
 
   source.pipe(decoder).pipe(sink)

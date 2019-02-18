@@ -27,11 +27,9 @@ class TestSink extends Sink {
 function roundTripFactory() {
   const spy = sinon.spy()
 
-  const typeCache = new TypeCache()
-
   const source = new Source()
-  const encoder = new BinaryProtocolEncoder(typeCache)
-  const decoder = new BinaryProtocolDecoder(typeCache)
+  const encoder = new BinaryProtocolEncoder()
+  const decoder = new BinaryProtocolDecoder()
   const sink = new TestSink(spy)
 
   source
