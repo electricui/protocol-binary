@@ -128,11 +128,8 @@ describe('Binary Protocol Hint Validator', () => {
       ) {
         const boardID = new Message(MESSAGEIDS.BOARD_IDENTIFIER, 'fake-device')
         boardID.metadata.internal = true
-        const libraryVersion = new Message(MESSAGEIDS.LIBRARY_VERSION, '0.4.0')
-        libraryVersion.metadata.internal = true
 
         replies.push(boardID)
-        replies.push(libraryVersion)
       }
 
       // reply with the  ack message
@@ -148,10 +145,6 @@ describe('Binary Protocol Hint Validator', () => {
       assert.strictEqual(
         device.metadata.internal[MESSAGEIDS.BOARD_IDENTIFIER],
         'fake-device',
-      )
-      assert.strictEqual(
-        device.metadata.internal[MESSAGEIDS.LIBRARY_VERSION],
-        '0.4.0',
       )
       done()
     })
