@@ -52,7 +52,7 @@
     "typescript": "^3.3.3"
   },
   "scripts": {
-    "prepack": "npm run build && silversmith prepack",
+    "prepack": "silversmith prepack",
     "postpack": "silversmith postpack",
     "benchmark": "benchr benchmarks/*",
     "build": "rollup -c",
