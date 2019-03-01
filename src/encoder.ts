@@ -55,7 +55,7 @@ export function encode(message: Message): Buffer {
     )
   }
 
-  if (message.payload === null) {
+  if (message.payload === null && message.metadata.internal) {
     console.log(
       "this shouldn't have happened, the message payload was null",
       message,
