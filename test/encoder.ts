@@ -58,4 +58,18 @@ describe('BinaryProtocolEncoder', () => {
 
     assert.deepEqual(result, expected)
   })
+  it('correctly encodes a search packet', () => {
+    const message = new Message('x', Buffer.alloc(0))
+    message.metadata.internal = true
+    message.metadata.query = false
+    message.metadata.type = 0
+
+    const result = encodeWithPipeline(message)
+
+    console.log(result)
+
+    const expected = Buffer.from([0x00, 0x40, 0x01, 0x78, 0xc3, 0x55])
+
+    assert.deepEqual(result, expected)
+  })
 })
