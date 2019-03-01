@@ -90,8 +90,9 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     promises
       .then(([writeResult, replyResult]) => {
         dBinaryHandshake(
-          `Received a writeResult and a replyResult`,
+          'Received a writeResult:',
           writeResult,
+          'and a replyResult:',
           replyResult,
         )
 
