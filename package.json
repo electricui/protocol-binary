@@ -1,6 +1,6 @@
 {
   "name": "@electricui/protocol-binary",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "ElectricUI Binary Protocol Parser",
   "electricui-dev": true,
   "repository": "https://Mike-Dax@github.com/Scottapotamas/electricui-interface.git",
@@ -14,7 +14,7 @@
   ],
   "dependencies": {
     "@electricui/core": "^0.4.0",
-    "@electricui/protocol-binary-constants": "^0.4.2",
+    "@electricui/protocol-binary-constants": "^0.4.3",
     "@electricui/utility-crc16": "^0.4.0",
     "debug": "^4.1.1"
   },
