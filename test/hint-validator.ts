@@ -65,7 +65,7 @@ const mockTransportFactoryFactory = new TransportFactory(
 
     const queryManager = new QueryManagerBinaryProtocol({
       connectionInterface,
-      timeout: 30, // 30ms timeouts
+      timeout: 500, // 500ms timeouts
     })
 
     connectionInterface.setDeliverabilityManager(deliverabilityManger)
@@ -79,7 +79,7 @@ const mockTransportFactoryFactory = new TransportFactory(
 
 type fakeDevice = (message: Message) => Array<Message> | null
 
-function factory(receiveDataCallback: fakeDevice) {
+function factory(receiveDataCallback: fakeDevice, libraryVersion: number) {
   const deviceManager = new DeviceManager()
 
   const producer = new MockDiscoveryHintProducer()
@@ -108,7 +108,12 @@ function factory(receiveDataCallback: fakeDevice) {
   deviceManager.addHintConsumers([consumer])
   deviceManager.setCreateHintValidatorsCallback(
     (hint: Hint, connection: Connection) => {
-      const validator = new HintValidatorBinaryHandshake(hint, connection, 500)
+      const validator = new HintValidatorBinaryHandshake(
+        hint,
+        connection,
+        500,
+        libraryVersion,
+      )
 
       return [validator]
     },
@@ -119,14 +124,28 @@ function factory(receiveDataCallback: fakeDevice) {
 
 describe('Binary Protocol Hint Validator', () => {
   it('it resolves when a reply is received', done => {
+    const libVersion = 99
+
     const device = (message: Message) => {
       const replies: Array<Message> = []
 
       if (
         message.metadata.internal &&
-        message.messageID === MESSAGEIDS.SEARCH
+        message.metadata.query &&
+        message.messageID === MESSAGEIDS.BOARD_IDENTIFIER
       ) {
         const boardID = new Message(MESSAGEIDS.BOARD_IDENTIFIER, 'fake-device')
+        boardID.metadata.internal = true
+
+        replies.push(boardID)
+      }
+
+      if (
+        message.metadata.internal &&
+        message.metadata.query &&
+        message.messageID === MESSAGEIDS.LIBRARY_VERSION
+      ) {
+        const boardID = new Message(MESSAGEIDS.LIBRARY_VERSION, libVersion)
         boardID.metadata.internal = true
 
         replies.push(boardID)
@@ -137,16 +156,65 @@ describe('Binary Protocol Hint Validator', () => {
       return replies
     }
 
-    const deviceManager = factory(device)
+    const deviceManager = factory(device, libVersion)
 
     deviceManager.poll()
 
     deviceManager.on(MANAGER_EVENTS.FOUND_DEVICE, (device: Device) => {
-      assert.strictEqual(
-        device.metadata.internal[MESSAGEIDS.BOARD_IDENTIFIER],
-        'fake-device',
-      )
+      assert.strictEqual(device.deviceID, 'fake-device')
       done()
+    })
+  })
+  it("it doesn't find a device if the library version is incorrect", async () => {
+    const deviceLibVersion = 99
+    const expectedLibVersion = 11
+
+    const device = (message: Message) => {
+      const replies: Array<Message> = []
+
+      if (
+        message.metadata.internal &&
+        message.metadata.query &&
+        message.messageID === MESSAGEIDS.BOARD_IDENTIFIER
+      ) {
+        const boardID = new Message(MESSAGEIDS.BOARD_IDENTIFIER, 'fake-device')
+        boardID.metadata.internal = true
+
+        replies.push(boardID)
+      }
+
+      if (
+        message.metadata.internal &&
+        message.metadata.query &&
+        message.messageID === MESSAGEIDS.LIBRARY_VERSION
+      ) {
+        const boardID = new Message(
+          MESSAGEIDS.LIBRARY_VERSION,
+          deviceLibVersion,
+        )
+        boardID.metadata.internal = true
+
+        replies.push(boardID)
+      }
+
+      // reply with the  ack message
+
+      return replies
+    }
+
+    const deviceManager = factory(device, expectedLibVersion)
+
+    await deviceManager.poll()
+
+    await new Promise((resolve, reject) => setTimeout(resolve, 150))
+
+    assert.isTrue(
+      deviceManager.devices.size === 0,
+      'A device has been detect when none should have been',
+    )
+
+    deviceManager.on(MANAGER_EVENTS.FOUND_DEVICE, (device: Device) => {
+      throw new Error('The device manager should not have detected any devices')
     })
   })
 })

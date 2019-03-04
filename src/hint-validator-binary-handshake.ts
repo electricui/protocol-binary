@@ -16,12 +16,17 @@ const dBinaryHandshake = require('debug')(
 )
 
 export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator {
-  timeout: number
+  libraryVersion: number | null
 
-  constructor(hint: Hint, connection: Connection, timeout?: number) {
+  constructor(
+    hint: Hint,
+    connection: Connection,
+    timeout?: number,
+    libraryVersion?: number,
+  ) {
     super(hint, connection)
 
-    this.timeout = timeout || 2000 // 2 seconds to respond
+    this.libraryVersion = libraryVersion || null // if they don't specify a library version, just don't check it for now?
   }
 
   canValidate(hint: Hint): boolean {
@@ -34,88 +39,77 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
 
     dBinaryHandshake(`Starting binary handshake over ${connection.getHash()}`)
 
-    const observableInternal = connection.createObservable(
-      (message: Message) => {
-        return message.metadata.internal
-      },
-    )
-    const observableDeveloper = connection.createObservable(
-      (message: Message) => {
-        return !message.metadata.internal
-      },
-    )
-
-    const internal: Metadata = {}
-    const developer: Metadata = {}
-
-    const subscriptionInternal = observableInternal.subscribe(
-      (message: Message) => {
-        dBinaryHandshake(`Received an internal message during the handshake`)
-        internal[message.messageID] = message.payload
-      },
-    )
-    const subscriptionDeveloper = observableDeveloper.subscribe(
-      (message: Message) => {
-        dBinaryHandshake(`Received a developer message during the handshake`)
-        developer[message.messageID] = message.payload
-      },
-    )
-
-    const { promise: waitForReply, cancel } = connection.waitForReply(
-      (message: Message) => {
-        return (
-          message.messageID === MESSAGEIDS.BOARD_IDENTIFIER &&
-          message.metadata.internal
-        )
-      },
-      this.timeout,
-    )
-
     this.onCancel = () => {
-      cancel()
-      subscriptionInternal.unsubscribe()
-      subscriptionDeveloper.unsubscribe()
+      // TODO: Work out how we cancel queries?
     }
 
     // Send an empty buffer instead of a null
-    const searchMessage = new Message(MESSAGEIDS.SEARCH, Buffer.alloc(0))
-    searchMessage.metadata.type = TYPES.CALLBACK
-    searchMessage.metadata.internal = true
+    const requestBoardIDMessage = new Message(
+      MESSAGEIDS.BOARD_IDENTIFIER,
+      Buffer.alloc(0),
+    )
+    requestBoardIDMessage.metadata.type = TYPES.UINT16
+    requestBoardIDMessage.metadata.internal = true
+    requestBoardIDMessage.metadata.query = true
 
-    const write = connection.write(searchMessage)
+    const requestBoardID = connection
+      .write(requestBoardIDMessage)
+      .then(reply => {
+        console.log('boardid', reply)
+        return reply
+      })
 
-    dBinaryHandshake(`Sending search packet ${MESSAGEIDS.SEARCH}`)
-    const promises = Promise.all([write, waitForReply])
+    const requestLibraryVersionMessage = new Message(
+      MESSAGEIDS.LIBRARY_VERSION,
+      Buffer.alloc(0),
+    )
+    requestLibraryVersionMessage.metadata.type = TYPES.UINT8
+    requestLibraryVersionMessage.metadata.internal = true
+    requestLibraryVersionMessage.metadata.query = true
+
+    const requestLibraryVersion = connection
+      .write(requestLibraryVersionMessage)
+      .then(reply => {
+        console.log('libid', reply)
+        return reply
+      })
+
+    dBinaryHandshake(`Requesting board ID and library version`)
+    const promises = Promise.all([requestBoardID, requestLibraryVersion])
 
     promises
-      .then(([writeResult, replyResult]) => {
+      .then(([boardIDReply, libraryVersionReply]) => {
         dBinaryHandshake(
-          'Received a writeResult:',
-          writeResult,
-          'and a replyResult:',
-          replyResult,
+          'Device ID is:',
+          boardIDReply,
+          'Device eUI library version is:',
+          libraryVersionReply,
         )
 
-        if (replyResult) {
-          const boardID = String(replyResult.payload)
+        if (
+          this.libraryVersion !== null &&
+          this.libraryVersion !== libraryVersionReply.payload
+        ) {
+          dBinaryHandshake(
+            'Device is the wrong eUI library version for this validator',
+          )
+          return null
+        }
+
+        // if we receive the board reply and either the library version isn't set or we receive a library version
+        if (boardIDReply && libraryVersionReply) {
+          const boardID = String(boardIDReply.payload)
 
           const candidate = new DeviceCandidate(boardID, this.connection)
-
-          candidate.setMetadata({
-            internal,
-            developer,
-          })
 
           this.pushDeviceCandidate(candidate)
         }
       })
       .catch(err => {
-        // console.warn('waitForReply errored with ', err)
-        dBinaryHandshake(`waitForReply errored with`, err)
+        // console.warn('boardIDWaitForReply errored with ', err)
+        dBinaryHandshake(`boardIDWaitForReply errored with`, err)
       })
       .finally(() => {
-        subscriptionInternal.unsubscribe()
-        subscriptionDeveloper.unsubscribe()
         dBinaryHandshake(`Exiting binary handshake`)
         this.complete()
       })
