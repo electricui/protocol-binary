@@ -1,4 +1,9 @@
-import { ConnectionInterface, Message, PipelinePromise, QueryManager } from '@electricui/core'
+import {
+  ConnectionInterface,
+  Message,
+  PipelinePromise,
+  QueryManager,
+} from '@electricui/core'
 import { MESSAGEIDS } from '@electricui/protocol-binary-constants'
 
 interface QueryManagerBinaryProtocolOptions {
@@ -25,11 +30,17 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
   push(message: Message): PipelinePromise {
     // if there's no query bit set, just send it blindly
     if (!message.metadata.query) {
+      dQueryManager(`not a query: ${message.messageID}, sending blindly`)
       return this.connectionInterface.writePipeline.push(message)
     }
 
     // if there's a query bit, but the ackNum is set, then it's not actually a query
     if (message.metadata.ackNum > 0) {
+      dQueryManager(
+        `a query bit, but the ackNum is set, then it's not actually a query: ${
+          message.messageID
+        }, sending blindly`,
+      )
       return this.connectionInterface.writePipeline.push(message)
     }
 
@@ -66,7 +77,8 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
 
     const queryPush = this.connectionInterface.writePipeline
       .push(message)
-      .catch(() => {
+      .catch(err => {
+        console.error('push failure', err)
         // in the event of a push failure, cancel the waitForReply
         cancel()
       })
@@ -78,7 +90,6 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
       .then(result => {
         const [queryResult, waitForReplyResult] = result
 
-        dQueryManager(`queryResult`, queryResult)
         dQueryManager(`waitForReplyResult`, waitForReplyResult)
 
         return waitForReplyResult

@@ -1,4 +1,8 @@
-import { ConnectionInterface, DeliverabilityManager, Message } from '@electricui/core'
+import {
+  ConnectionInterface,
+  DeliverabilityManager,
+  Message,
+} from '@electricui/core'
 import { MAX_ACK_NUM } from '@electricui/protocol-binary-constants'
 
 interface DeliverabilityManagerBinaryProtocolOptions {
@@ -23,10 +27,20 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
 
     // if there's no ack bit set, just send it blindly
     if (!message.metadata.ack) {
+      dDeliverabilityManager(
+        `No ack bit set for message ${
+          message.messageID
+        }, sending to query manager`,
+      )
       return queryManager.push(message)
     } else if (message.metadata.ackNum === 0) {
       // If the ack bit is high and the ackNum is 0, set it to 1
       // If the ack bit is high but the ackNum is not 0, leave the ackNum at whatever the queue set it to
+
+      dDeliverabilityManager(
+        `Ack bit set for message ${message.messageID}, incrementing ack number`,
+      )
+
       message.metadata.ackNum = 1
     }
 

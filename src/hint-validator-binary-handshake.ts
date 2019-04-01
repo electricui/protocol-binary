@@ -55,7 +55,6 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     const requestBoardID = connection
       .write(requestBoardIDMessage)
       .then(reply => {
-        console.log('boardid', reply)
         return reply
       })
 
@@ -70,7 +69,6 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     const requestLibraryVersion = connection
       .write(requestLibraryVersionMessage)
       .then(reply => {
-        console.log('libid', reply)
         return reply
       })
 

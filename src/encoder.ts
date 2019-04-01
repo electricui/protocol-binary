@@ -17,9 +17,9 @@ export function encode(message: Message): Buffer {
   // merge the options provided with the defaults
 
   // destructure them out
-  const { type, internal, query, offset, ackNum } = message.metadata
+  const { type, internal, query, offset, ackNum, ack } = message.metadata
 
-  debug(`Encoding `, message)
+  debug(`Encoding `, message.messageID, JSON.stringify(message))
 
   // Check that the type is of the correct size, it's a 4 bit int.
   if (type < 0 || type > 15) {
@@ -74,6 +74,19 @@ export function encode(message: Message): Buffer {
     )
   }
 
+  let ackNumToSend = ackNum
+
+  if (ackNum > 0 && !ack) {
+    console.warn(
+      'The ackNum > 0 (',
+      ackNum,
+      '), but there is no ack bit set for',
+      message,
+      'setting ackNum to 0.',
+    )
+    ackNumToSend = 0
+  }
+
   // Check that the ackNum length is of the correct size, it's a 3bit int.
   if (ackNum < 0 || ackNum > ACK_NUM.MAX) {
     throw new TypeError(
@@ -108,7 +121,7 @@ export function encode(message: Message): Buffer {
   // construct the byte
   messageHeaderBuffer[0] |= messageIDLength
   messageHeaderBuffer[0] |= query ? 0x10 : 0x00
-  messageHeaderBuffer[0] |= ackNum << 5
+  messageHeaderBuffer[0] |= ackNumToSend << 5
 
   // we need the messageID as a binary buffer instead of a string
   const messageIDBuffer = Buffer.from(message.messageID)
@@ -159,6 +172,11 @@ export function encode(message: Message): Buffer {
   ]
 
   const packet = Buffer.concat(packetArray, packetLength)
+  debug(
+    `Encoded message is ${packet.toString(
+      'hex',
+    )} with payload length ${payloadLength}`,
+  )
 
   return packet
 }
