@@ -53,7 +53,7 @@ const randomMessageID = (length: number) => {
 }
 
 describe('Binary Protocol Fuzz Testing', () => {
-  it('correctly encodes and decodes messages at every payload length', async () => {
+  xit('correctly encodes and decodes messages at every payload length', async () => {
     const { source, spy } = roundTripFactory()
 
     let messageIDLength = Math.floor(Math.random() * 15 + 1)
@@ -66,12 +66,15 @@ describe('Binary Protocol Fuzz Testing', () => {
         Buffer.from([0x00]), //pseudoRandomBytes(payloadLength),
       )
 
+      const isAck = random.boolean()
+
       message.metadata = {
         type: random.number(15),
         internal: random.boolean(),
         query: random.boolean(),
         offset: random.boolean() ? null : random.number(65535),
-        ackNum: random.number(7),
+        ack: isAck,
+        ackNum: isAck ? random.number(7) : 0,
       }
 
       delete message.metadata.ack
