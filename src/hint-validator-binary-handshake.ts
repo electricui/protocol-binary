@@ -52,11 +52,7 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     requestBoardIDMessage.metadata.internal = true
     requestBoardIDMessage.metadata.query = true
 
-    const requestBoardID = connection
-      .write(requestBoardIDMessage)
-      .then(reply => {
-        return reply
-      })
+    const requestBoardID = connection.write(requestBoardIDMessage)
 
     const requestLibraryVersionMessage = new Message(
       MESSAGEIDS.LIBRARY_VERSION,
@@ -66,11 +62,7 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     requestLibraryVersionMessage.metadata.internal = true
     requestLibraryVersionMessage.metadata.query = true
 
-    const requestLibraryVersion = connection
-      .write(requestLibraryVersionMessage)
-      .then(reply => {
-        return reply
-      })
+    const requestLibraryVersion = connection.write(requestLibraryVersionMessage)
 
     dBinaryHandshake(`Requesting board ID and library version`)
     const promises = Promise.all([requestBoardID, requestLibraryVersion])
