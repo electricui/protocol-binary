@@ -116,6 +116,7 @@ export default class BinaryDecoderPipeline extends Pipeline {
       internal: this.packet.internal,
       query: this.packet.query,
       offset: this.packet.offset,
+      ack: this.packet.ackNum > 0,
       ackNum: this.packet.ackNum,
     }
 
