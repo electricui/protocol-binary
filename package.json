@@ -1,6 +1,6 @@
 {
   "name": "@electricui/protocol-binary",
-  "version": "0.6.4-prerelease.7",
+  "version": "0.6.4-prerelease.8",
   "description": "ElectricUI Binary Protocol Parser",
   "electricui-dev": true,
   "author": "Electric UI <support@electricui.com> (https://electricui.com)",
@@ -13,7 +13,7 @@
     "manifest.json"
   ],
   "dependencies": {
-    "@electricui/core": "^0.6.4-prerelease.7",
+    "@electricui/core": "^0.6.4-prerelease.8",
     "@electricui/protocol-binary-constants": "^0.6.4-prerelease.3",
     "@electricui/utility-crc16": "^0.6.4-prerelease.3",
     "debug": "^4.1.1"
