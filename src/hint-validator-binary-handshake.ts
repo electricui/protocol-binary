@@ -44,10 +44,7 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     }
 
     // Send an empty buffer instead of a null
-    const requestBoardIDMessage = new Message(
-      MESSAGEIDS.BOARD_IDENTIFIER,
-      Buffer.alloc(0),
-    )
+    const requestBoardIDMessage = new Message(MESSAGEIDS.BOARD_IDENTIFIER, null)
     requestBoardIDMessage.metadata.type = TYPES.UINT16
     requestBoardIDMessage.metadata.internal = true
     requestBoardIDMessage.metadata.query = true
@@ -56,7 +53,7 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
 
     const requestLibraryVersionMessage = new Message(
       MESSAGEIDS.LIBRARY_VERSION,
-      Buffer.alloc(0),
+      null,
     )
     requestLibraryVersionMessage.metadata.type = TYPES.UINT8
     requestLibraryVersionMessage.metadata.internal = true
