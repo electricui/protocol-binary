@@ -327,11 +327,7 @@ export default class BinaryDecoderPipeline extends Pipeline {
           // check that the checksum matches
           if (calculatedChecksum !== this.checksumUInt16Array[0]) {
             statusContext.error = new Error(
-              `${
-                ERRORS.INCORRECT_CHECKSUM
-              } - expected ${calculatedChecksum} and got ${
-                this.checksumUInt16Array[0]
-              }`,
+              `${ERRORS.INCORRECT_CHECKSUM} - expected ${calculatedChecksum} and got ${this.checksumUInt16Array[0]}`,
             )
             break
           }
@@ -341,8 +337,6 @@ export default class BinaryDecoderPipeline extends Pipeline {
 
           // push the packet up the pipeline and reset the state machine
           return this.cycle()
-
-          break
         }
 
         // we would have broken out if we had seen the last byte, so we keep going
@@ -384,6 +378,8 @@ export default class BinaryDecoderPipeline extends Pipeline {
 
     // otherwise we consumed some garbage
     console.warn('Garbage packet received', packet)
-    return Promise.reject('Received garbage')
+
+    // Reject back down the chain to the transport
+    return Promise.reject(packet)
   }
 }
