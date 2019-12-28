@@ -1,11 +1,9 @@
-import { Message, Pipeline, TypeCache } from '@electricui/core'
+import { Message, Pipeline } from '@electricui/core'
+
 import { ACK_NUM } from '@electricui/protocol-binary-constants'
 import { CRC16 } from '@electricui/utility-crc16'
 
 const debug = require('debug')('electricui-protocol-binary:encoder')
-
-const BUFFER_SOH = Buffer.from([0x01])
-const BUFFER_EOT = Buffer.from([0x04])
 
 /**
  * Generates an eUI Binary Packet
@@ -55,15 +53,7 @@ export function encode(message: Message): Buffer {
     )
   }
 
-  if (message.payload === null && message.metadata.internal) {
-    console.log(
-      "this shouldn't have happened, the message payload was null",
-      message,
-    )
-  }
-
-  const payloadBuffer =
-    message.payload === null ? Buffer.alloc(0) : message.payload
+  const payloadBuffer = message.payload === null ? Buffer.alloc(0) : message.payload // prettier-ignore
 
   const payloadLength = payloadBuffer.length
 

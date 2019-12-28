@@ -9,7 +9,7 @@ const internalTypes = {
   [MESSAGEIDS.READWRITE_MESSAGEIDS_REQUEST_MESSAGE_OBJECTS]: TYPES.CALLBACK,
   [MESSAGEIDS.READWRITE_MESSAGEIDS_ITEM]: TYPES.CUSTOM_MARKER,
   [MESSAGEIDS.READWRITE_MESSAGEIDS_COUNT]: TYPES.UINT8,
-}
+} as const
 
 /**
  * The type cache encoder pipeline, applies the type information from the cache

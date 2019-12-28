@@ -7,10 +7,6 @@ import {
 } from '@electricui/core'
 import { MESSAGEIDS, TYPES } from '@electricui/protocol-binary-constants'
 
-interface Metadata {
-  [key: string]: any
-}
-
 const dBinaryHandshake = require('debug')(
   'electricui-protocol-binary:handshake',
 )
