@@ -11,8 +11,8 @@ import {
   DeviceManager,
   DiscoveryHintConsumer,
   Hint,
-  Message,
   MANAGER_EVENTS,
+  Message,
   QueryManager,
   QueryManagerNone,
   Sink,
@@ -22,11 +22,11 @@ import {
   TypeCache,
 } from '@electricui/core'
 import { MESSAGEIDS, TYPES } from '@electricui/protocol-binary-constants'
+import MockTransport, { MockTransportOptions } from './fixtures/mock-transport'
 
 import HintValidatorBinaryHandshake from '../src/hint-validator-binary-handshake'
-import QueryManagerBinaryProtocol from '../src/query-manager-binary-protocol'
 import MockDiscoveryHintProducer from './fixtures/hint-producer'
-import MockTransport, { MockTransportOptions } from './fixtures/mock-transport'
+import QueryManagerBinaryProtocol from '../src/query-manager-binary-protocol'
 
 const chaiAsPromised = require('chai-as-promised')
 chai.use(chaiAsPromised)
@@ -108,12 +108,10 @@ function factory(receiveDataCallback: fakeDevice, libraryVersion: number) {
   deviceManager.addHintConsumers([consumer])
   deviceManager.setCreateHintValidatorsCallback(
     (hint: Hint, connection: Connection) => {
-      const validator = new HintValidatorBinaryHandshake(
-        hint,
-        connection,
-        500,
+      const validator = new HintValidatorBinaryHandshake(hint, connection, {
+        timeout: 500,
         libraryVersion,
-      )
+      })
 
       return [validator]
     },
