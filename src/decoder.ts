@@ -106,7 +106,12 @@ export default class BinaryDecoderPipeline extends Pipeline {
    * Push object packets up the abstraction and reset the state machine.
    */
   cycle = () => {
-    debug(`Cycling State Machine`)
+    debug(
+      `Cycling State Machine`,
+      this.packet.messageID,
+      ': ',
+      this.packet.payload,
+    )
 
     const message = new Message(this.packet.messageID, this.packet.payload)
 
