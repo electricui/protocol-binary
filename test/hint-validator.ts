@@ -65,7 +65,7 @@ const mockTransportFactoryFactory = new TransportFactory(
 
     const queryManager = new QueryManagerBinaryProtocol({
       connectionInterface,
-      timeout: 500, // 500ms timeouts
+      timeout: 10, // 10ms timeouts
     })
 
     connectionInterface.setDeliverabilityManager(deliverabilityManger)
@@ -79,7 +79,7 @@ const mockTransportFactoryFactory = new TransportFactory(
 
 type fakeDevice = (message: Message) => Array<Message> | null
 
-function factory(receiveDataCallback: fakeDevice, libraryVersion: number) {
+function factory(receiveDataCallback: fakeDevice) {
   const deviceManager = new DeviceManager()
 
   const producer = new MockDiscoveryHintProducer()
@@ -110,7 +110,7 @@ function factory(receiveDataCallback: fakeDevice, libraryVersion: number) {
     (hint: Hint, connection: Connection) => {
       const validator = new HintValidatorBinaryHandshake(hint, connection, {
         timeout: 500,
-        libraryVersion,
+        attemptTiming: [0, 1, 5, 100, 1000, 2000, 5000],
       })
 
       return [validator]
@@ -122,8 +122,6 @@ function factory(receiveDataCallback: fakeDevice, libraryVersion: number) {
 
 describe('Binary Protocol Hint Validator', () => {
   it('it resolves when a reply is received', done => {
-    const libVersion = 99
-
     const device = (message: Message) => {
       const replies: Array<Message> = []
 
@@ -138,23 +136,10 @@ describe('Binary Protocol Hint Validator', () => {
         replies.push(boardID)
       }
 
-      if (
-        message.metadata.internal &&
-        message.metadata.query &&
-        message.messageID === MESSAGEIDS.LIBRARY_VERSION
-      ) {
-        const boardID = new Message(MESSAGEIDS.LIBRARY_VERSION, libVersion)
-        boardID.metadata.internal = true
-
-        replies.push(boardID)
-      }
-
-      // reply with the  ack message
-
       return replies
     }
 
-    const deviceManager = factory(device, libVersion)
+    const deviceManager = factory(device)
 
     deviceManager.poll()
 
@@ -162,10 +147,41 @@ describe('Binary Protocol Hint Validator', () => {
       assert.strictEqual(device.deviceID, 'fake-device')
       done()
     })
-  })
-  it("it doesn't find a device if the library version is incorrect", async () => {
-    const deviceLibVersion = 99
-    const expectedLibVersion = 11
+  }).timeout(10_000)
+  it('it resolves when the device replies after the 2nd request', done => {
+    let attemptNum = 0
+
+    const device = (message: Message) => {
+      const replies: Array<Message> = []
+
+      if (
+        message.metadata.internal &&
+        message.metadata.query &&
+        message.messageID === MESSAGEIDS.BOARD_IDENTIFIER
+      ) {
+        attemptNum++
+        const boardID = new Message(MESSAGEIDS.BOARD_IDENTIFIER, 'fake-device')
+        boardID.metadata.internal = true
+
+        if (attemptNum > 2) {
+          replies.push(boardID)
+        }
+      }
+
+      return replies
+    }
+
+    const deviceManager = factory(device)
+
+    deviceManager.poll()
+
+    deviceManager.on(MANAGER_EVENTS.FOUND_DEVICE, (device: Device) => {
+      assert.strictEqual(device.deviceID, 'fake-device')
+      done()
+    })
+  }).timeout(10_000)
+  it('it resolves when device only responds after 1 second', done => {
+    let startTime = new Date().getTime()
 
     const device = (message: Message) => {
       const replies: Array<Message> = []
@@ -178,43 +194,64 @@ describe('Binary Protocol Hint Validator', () => {
         const boardID = new Message(MESSAGEIDS.BOARD_IDENTIFIER, 'fake-device')
         boardID.metadata.internal = true
 
-        replies.push(boardID)
+        if (new Date().getTime() > startTime + 1000) {
+          replies.push(boardID)
+        }
       }
-
-      if (
-        message.metadata.internal &&
-        message.metadata.query &&
-        message.messageID === MESSAGEIDS.LIBRARY_VERSION
-      ) {
-        const boardID = new Message(
-          MESSAGEIDS.LIBRARY_VERSION,
-          deviceLibVersion,
-        )
-        boardID.metadata.internal = true
-
-        replies.push(boardID)
-      }
-
-      // reply with the  ack message
 
       return replies
     }
 
-    const deviceManager = factory(device, expectedLibVersion)
+    const deviceManager = factory(device)
 
-    await deviceManager.poll()
-
-    await new Promise((resolve, reject) => setTimeout(resolve, 150))
-
-    assert.isTrue(
-      deviceManager.devices.size === 0,
-      'A device has been detect when none should have been',
-    )
+    deviceManager.poll()
 
     deviceManager.on(MANAGER_EVENTS.FOUND_DEVICE, (device: Device) => {
-      throw new Error('The device manager should not have detected any devices')
+      assert.strictEqual(device.deviceID, 'fake-device')
+      done()
     })
-  })
+  }).timeout(10_000)
+  it("it doesn't resolve when the device replies after the timeout", done => {
+    let startTime = new Date().getTime()
+
+    const delayTime = 5000
+
+    const device = (message: Message) => {
+      const replies: Array<Message> = []
+
+      if (
+        message.metadata.internal &&
+        message.metadata.query &&
+        message.messageID === MESSAGEIDS.BOARD_IDENTIFIER
+      ) {
+        const boardID = new Message(MESSAGEIDS.BOARD_IDENTIFIER, 'fake-device')
+        boardID.metadata.internal = true
+
+        if (new Date().getTime() > startTime + delayTime) {
+          replies.push(boardID)
+        }
+      }
+
+      return replies
+    }
+
+    const deviceManager = factory(device)
+
+    deviceManager.poll()
+
+    let found = false
+
+    deviceManager.on(MANAGER_EVENTS.FOUND_DEVICE, (device: Device) => {
+      found = true
+      throw new Error('It found a device after the timeout')
+    })
+
+    setTimeout(() => {
+      assert.isFalse(found)
+
+      done()
+    }, delayTime + 1000)
+  }).timeout(10_000)
 })
 
 /*
