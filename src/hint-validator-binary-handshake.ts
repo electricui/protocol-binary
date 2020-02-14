@@ -10,15 +10,13 @@ import { MESSAGEIDS, TYPES } from '@electricui/protocol-binary-constants'
 import { attempt, is } from 'bluebird'
 
 const dBinaryHandshake = require('debug')(
-  'electricui-protocol-binary:handshake',
+  'electricui-protocol-binary:hint-validator-handshake',
 )
 
 interface HintValidatorBinaryHandshakeOptions {
   /**
-   * An array of timings to make attempts at, by default an exponential backoff style
-   * of [immediately, 10ms, 100ms, 1000ms].
-   *
-   * Attempts will independently be sent at this rate, then timed out individually.
+   * An array of timings to make attempts at, by default it tries immediately,
+   * then waits a second before trying a second time.
    */
   attemptTiming?: number[]
   /**
@@ -72,7 +70,11 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     this.treatAllSerialDevicesAsSeparate =
       options.treatAllSerialDevicesAsSeparate ?? false
 
-    this.attemptTiming = options.attemptTiming ?? [0, 10, 100, 1000]
+    /**
+     * Arduino ATMEGA 2560s will not work if packets are sent after ~60ms after serial connections are opened and before ~900ms.
+     * So we wait 1 second after sending a packet immediately.
+     */
+    this.attemptTiming = options.attemptTiming ?? [0, 1000]
     this.timeout = options.timeout ?? 2000
 
     if (this.attemptTiming.length < 1) {
@@ -86,10 +88,13 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
   }
 
   sendAttempt = async (attemptIndex: number) => {
+    dBinaryHandshake(`Sending search attempt #${this.attemptIndex} `)
+
     // Setup the waitForReply handler
     const { promise: waitForReply, cancel } = this.connection.waitForReply<
       number
     >((replyMessage: Message) => {
+      // Hint validator binary handshake attempt
       return (
         replyMessage.messageID === MESSAGEIDS.BOARD_IDENTIFIER &&
         replyMessage.metadata.internal === true &&
@@ -106,34 +111,34 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     requestBoardIDMessage.metadata.internal = true
     requestBoardIDMessage.metadata.query = true
 
-    try {
-      // Wait for the write to occur
-      await this.connection.write(requestBoardIDMessage).catch(() => {
-        throw new Error(`Hint Validator write ${attemptIndex} failed`)
+    // Catch the waitForReply Promise
+
+    const caughtWaitForReplyPromise = waitForReply.catch(e => {
+      dBinaryHandshake(`Hint Validator waitForReply ${attemptIndex} timed out`)
+      return null
+    })
+
+    const caughtConnectionWriteAttempt = this.connection
+      .write(requestBoardIDMessage)
+      .catch(e => {
+        dBinaryHandshake(`Hint Validator write ${attemptIndex} failed`)
+        dBinaryHandshake(e)
+        return null
       })
 
-      // Then wait for the waitForReply handler to return with our message
-      const boardIDMessage = await waitForReply.catch(() => {
-        throw new Error(`Hint Validator waitForReply ${attemptIndex} timed out`)
-      })
+    await caughtConnectionWriteAttempt
 
-      if (!boardIDMessage) {
-        // If we didn't receive the boardID, just bail.
-        throw new Error('Hint Validator received a null boardID message')
-      }
+    const boardIDMessage = await caughtWaitForReplyPromise
 
-      if (boardIDMessage.payload === null) {
-        throw new Error('Hint Validator received a null boardID packet')
-      }
+    if (boardIDMessage && boardIDMessage.payload) {
+      dBinaryHandshake(`Attempt #${attemptIndex} succeeded!`)
 
       // Notify the device manager
       this.receivedBoardID(boardIDMessage.payload, attemptIndex)
-    } catch (e) {
-      dBinaryHandshake(
-        `Binary hint validator attempt ${attemptIndex} failed with reason:`,
-        e,
-      )
+      return
     }
+
+    dBinaryHandshake(`Binary hint validator attempt ${attemptIndex} failed`)
   }
 
   receivedBoardID = (boardID: number, attemptIndex: number) => {
@@ -179,6 +184,7 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     for (const cancelWaitForReply of this.waitForReplyCancellationHandlers) {
       cancelWaitForReply()
     }
+
     this.waitForReplyCancellationHandlers = []
 
     if (this.finalTimeoutHandler) {
@@ -195,15 +201,32 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
 
     // Loop through our attempts and send them off at the correct times.
 
-    while (this.attemptIndex < this.attemptTiming.length - 1) {
+    // While LESS THAN the COUNT => while the ID will be valid
+    while (
+      this.attemptIndex < this.attemptTiming.length &&
+      !this.hasReceivedBoardID
+    ) {
       // make an attempt
+
+      dBinaryHandshake(
+        `Delaying attempt #${this.attemptIndex} by ${
+          this.attemptTiming[this.attemptIndex]
+        }ms`,
+      )
 
       // wait the delay prescribed
       await new Promise((resolve, reject) =>
         setTimeout(resolve, this.attemptTiming[this.attemptIndex]),
       )
 
-      // fire off an attempt
+      // If we've received it in the meantime, bail
+      if (this.hasReceivedBoardID) {
+        dBinaryHandshake(
+          'hasReceivedBoardID went true while waiting to send next search packet',
+        )
+        return
+      }
+
       this.sendAttempt(this.attemptIndex)
 
       // iterate the index
@@ -213,6 +236,7 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     // Wait for the timeout, if we haven't received anything by then, complete, we haven't found anything.
     this.finalTimeoutHandler = setTimeout(() => {
       if (!this.hasReceivedBoardID) {
+        dBinaryHandshake('Exhausted validator attempts, giving up.')
         this.complete()
       }
     }, this.timeout)
