@@ -193,6 +193,8 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
       }`,
     )
 
+    // Loop through our attempts and send them off at the correct times.
+
     while (this.attemptIndex < this.attemptTiming.length - 1) {
       // make an attempt
 
@@ -208,11 +210,11 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
       this.attemptIndex++
     }
 
-    // Wait the last timing + the timeout, if we haven't received anything by then, complete, we haven't found anything.
+    // Wait for the timeout, if we haven't received anything by then, complete, we haven't found anything.
     this.finalTimeoutHandler = setTimeout(() => {
       if (!this.hasReceivedBoardID) {
         this.complete()
       }
-    }, this.attemptTiming[this.attemptTiming.length - 1] + this.timeout)
+    }, this.timeout)
   }
 }
