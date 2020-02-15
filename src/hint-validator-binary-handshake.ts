@@ -7,7 +7,7 @@ import {
   Transport,
 } from '@electricui/core'
 import { MESSAGEIDS, TYPES } from '@electricui/protocol-binary-constants'
-import { attempt, is } from 'bluebird'
+import { mark, measure } from './perf'
 
 const dBinaryHandshake = require('debug')(
   'electricui-protocol-binary:hint-validator-handshake',
@@ -88,6 +88,7 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
   }
 
   sendAttempt = async (attemptIndex: number) => {
+    mark(`binary-validator:attempt-${attemptIndex}`)
     dBinaryHandshake(`Sending search attempt #${this.attemptIndex} `)
 
     // Setup the waitForReply handler
@@ -126,9 +127,11 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
         return null
       })
 
+    mark(`binary-validator:attempt-${attemptIndex}:write`)
     await caughtConnectionWriteAttempt
-
+    measure(`binary-validator:attempt-${attemptIndex}:write`)
     const boardIDMessage = await caughtWaitForReplyPromise
+    measure(`binary-validator:attempt-${attemptIndex}`)
 
     if (boardIDMessage && boardIDMessage.payload) {
       dBinaryHandshake(`Attempt #${attemptIndex} succeeded!`)
