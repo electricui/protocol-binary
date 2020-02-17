@@ -51,7 +51,7 @@
     "postpack": "silversmith postpack",
     "benchmark": "benchr benchmarks/*",
     "build": "rm -rf ./lib && rollup -c",
-    "test": "export TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\"}' &&  mocha --require ts-node/register --reporter mochawesome \"test/**/*.ts\" && export TS_NODE_COMPILER_OPTIONS=\"\"",
+    "test": "export TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\"}' && mocha --require ts-node/register --reporter mochawesome \"test/**/*.ts\" && export TS_NODE_COMPILER_OPTIONS=\"\"",
     "coverage": "export TS_NODE_COMPILER_OPTIONS='{\"module\": \"commonjs\"}' && nyc mocha- -require ts-node/register \"test/**/*.ts\" && export TS_NODE_COMPILER_OPTIONS=\"\""
   }
 }
