@@ -1,6 +1,6 @@
 {
   "name": "@electricui/protocol-binary",
-  "version": "0.6.15-prerelease.15",
+  "version": "0.6.15-prerelease.16",
   "description": "ElectricUI Binary Protocol Parser",
   "electricui-dev": true,
   "author": "Electric UI <support@electricui.com> (https://electricui.com)",
@@ -13,12 +13,13 @@
     "manifest.json"
   ],
   "dependencies": {
-    "@electricui/core": "^0.6.15-prerelease.15",
-    "@electricui/protocol-binary-constants": "^0.6.15-prerelease.0",
-    "@electricui/utility-crc16": "^0.6.15-prerelease.0",
+    "@electricui/core": "^0.6.15-prerelease.16",
+    "@electricui/protocol-binary-constants": "^0.6.15-prerelease.16",
+    "@electricui/utility-crc16": "^0.6.15-prerelease.16",
     "debug": "^4.1.1"
   },
   "devDependencies": {
+    "@electricui/build-rollup-config": "^0.6.15-prerelease.16",
     "@types/bluebird": "^3.5.25",
     "@types/chai": "^4.1.7",
     "@types/chai-as-promised": "^7.1.0",
@@ -27,6 +28,7 @@
     "@types/deepmerge": "^2.2.0",
     "@types/faker": "^4.1.5",
     "@types/mocha": "^5.2.6",
+    "@types/node": "^12.12.27",
     "@types/sinon": "^7.0.6",
     "benchr": "^4.3.0",
     "chai": "^4.2.0",
@@ -37,14 +39,12 @@
     "mochawesome": "^3.1.1",
     "nyc": "^13.3.0",
     "performance-now": "^2.1.0",
+    "rollup": "^1.31.1",
     "serialport": "8.0.6",
     "sinon": "^7.2.3",
     "ts-node": "^8.5.4",
     "tslib": "^1.10.0",
-    "@types/node": "^12.12.27",
-    "typescript": "^3.7.5",
-    "rollup": "^1.31.1",
-    "@electricui/build-rollup-config": "^0.6.15-prerelease.0"
+    "typescript": "^3.7.5"
   },
   "scripts": {
     "prepack": "silversmith prepack",
