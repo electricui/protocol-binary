@@ -2,6 +2,7 @@ import { Message, Pipeline, TypeCache } from '@electricui/core'
 import { CRC16 } from '@electricui/utility-crc16'
 
 import ERRORS from './errors'
+import { BinaryPipelineOptions } from './options'
 
 const debug = require('debug')('electricui-protocol-binary:decoder')
 
@@ -97,9 +98,12 @@ export default class BinaryDecoderPipeline extends Pipeline {
     this.crc.reset()
   }
 
-  constructor() {
+  generateTimestamp: () => number = () => new Date().getTime()
+
+  constructor(options: BinaryPipelineOptions) {
     super()
     this.crc = new CRC16()
+    this.generateTimestamp = options.generateTimestamp ?? this.generateTimestamp
   }
 
   /**
@@ -123,6 +127,7 @@ export default class BinaryDecoderPipeline extends Pipeline {
       offset: this.packet.offset,
       ack: this.packet.ackNum > 0,
       ackNum: this.packet.ackNum,
+      timestamp: this.generateTimestamp(),
     }
 
     return this.push(message)

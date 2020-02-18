@@ -2,6 +2,7 @@ import { DuplexPipeline, TypeCache } from '@electricui/core'
 
 import BinaryDecoderPipeline from './decoder'
 import BinaryEncoderPipeline from './encoder'
+import { BinaryPipelineOptions } from './options'
 
 /**
  * The codec duplex pipeline
@@ -9,10 +10,10 @@ import BinaryEncoderPipeline from './encoder'
 export default class BinaryPipeline extends DuplexPipeline {
   readPipeline: BinaryDecoderPipeline
   writePipeline: BinaryEncoderPipeline
-  constructor() {
+  constructor(options: BinaryPipelineOptions = {}) {
     super()
 
-    this.readPipeline = new BinaryDecoderPipeline()
-    this.writePipeline = new BinaryEncoderPipeline()
+    this.readPipeline = new BinaryDecoderPipeline(options)
+    this.writePipeline = new BinaryEncoderPipeline(options)
   }
 }

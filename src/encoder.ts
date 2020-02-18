@@ -1,6 +1,7 @@
 import { Message, Pipeline } from '@electricui/core'
 
 import { ACK_NUM } from '@electricui/protocol-binary-constants'
+import { BinaryPipelineOptions } from './options'
 import { CRC16 } from '@electricui/utility-crc16'
 
 const debug = require('debug')('electricui-protocol-binary:encoder')
@@ -172,7 +173,7 @@ export function encode(message: Message): Buffer {
 }
 
 export default class BinaryEncoderPipeline extends Pipeline {
-  constructor() {
+  constructor(options: BinaryPipelineOptions) {
     super()
   }
 
