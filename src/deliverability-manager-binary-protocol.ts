@@ -3,6 +3,7 @@ import {
   DeliverabilityManager,
   Message,
 } from '@electricui/core'
+
 import { MAX_ACK_NUM } from '@electricui/protocol-binary-constants'
 
 interface DeliverabilityManagerBinaryProtocolOptions {
@@ -28,9 +29,7 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
     // if there's no ack bit set, just send it blindly
     if (!message.metadata.ack) {
       dDeliverabilityManager(
-        `No ack bit set for message ${
-          message.messageID
-        }, sending to query manager`,
+        `No ack bit set for message ${message.messageID}, sending to query manager`,
       )
       return queryManager.push(message)
     } else if (message.metadata.ackNum === 0) {
@@ -94,6 +93,7 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
         fakeMessage.metadata.ackNum = desiredackNum
         fakeMessage.metadata.internal = message.metadata.internal
         fakeMessage.metadata.type = message.metadata.type
+        fakeMessage.metadata.timestamp = res.metadata.timestamp // use the ack reply message timestamp
 
         this.connectionInterface.device.receive(fakeMessage)
       }
