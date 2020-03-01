@@ -4,6 +4,7 @@ import {
   PipelinePromise,
   QueryManager,
 } from '@electricui/core'
+
 import { MESSAGEIDS } from '@electricui/protocol-binary-constants'
 
 interface QueryManagerBinaryProtocolOptions {
@@ -37,9 +38,7 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
     // if there's a query bit, but the ackNum is set, then it's not actually a query
     if (message.metadata.ackNum > 0) {
       dQueryManager(
-        `a query bit, but the ackNum is set, then it's not actually a query: ${
-          message.messageID
-        }, sending blindly`,
+        `a query bit, but the ackNum is set, then it's not actually a query: ${message.messageID}, sending blindly`,
       )
       return this.connectionInterface.writePipeline.push(message)
     }
@@ -94,8 +93,8 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
 
         return waitForReplyResult
       })
-      .catch(err => {
-        dQueryManager("Couldn't get query ", err)
+      .catch((err: Error) => {
+        dQueryManager("Couldn't get query ", err, err.stack)
         throw err
       })
   }
