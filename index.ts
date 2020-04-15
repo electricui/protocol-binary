@@ -11,3 +11,6 @@ export {
   default as QueryManagerBinaryProtocol,
 } from './src/query-manager-binary-protocol'
 export { default as BinaryTypeCachePipeline } from './src/typecache-pipeline'
+export {
+  UndefinedMessageIDGuardPipeline,
+} from './src/guard-against-undefined-messageids'
