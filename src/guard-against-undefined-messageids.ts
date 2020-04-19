@@ -22,9 +22,7 @@ class UndefinedMessageIDGuardEncoderPipeline extends Pipeline {
         !this.runtimeMessageIDs.includes(message.messageID)
       ) {
         throw new Error(
-          `MessageID ${
-            message.messageID
-          } does not have a type in the type cache. It has not been received from the hardware yet. Perhaps there is a typo in the messageID, or the handshake has not been run yet, a hot reload might have wiped the type cache requiring a re-handshake.`,
+          `MessageID '${message.messageID}' does not have a type in the type cache. It has not been received from the hardware yet. Perhaps there is a typo in the messageID, or the handshake has not been run yet, a hot reload might have wiped the type cache requiring a re-handshake.`,
         )
       }
     }
