@@ -72,6 +72,7 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
         )
       },
       this.timeout,
+      `Query reply for messageID "${desiredMessageID}"`,
     )
 
     const queryPush = this.connectionInterface.writePipeline
