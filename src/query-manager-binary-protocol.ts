@@ -77,7 +77,7 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
 
     const queryPush = this.connectionInterface.writePipeline
       .push(message)
-      .catch(err => {
+      .catch((err) => {
         console.error('push failure', err)
         // in the event of a push failure, cancel the waitForReply
         cancel()
@@ -87,7 +87,7 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
 
     // we require both a successful send and a successful ack
     return Promise.all([queryPush, waitForReply])
-      .then(result => {
+      .then((result) => {
         const [queryResult, waitForReplyResult] = result
 
         dQueryManager(`waitForReplyResult`, waitForReplyResult)

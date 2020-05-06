@@ -86,7 +86,7 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
     })
 
     // ack reply received, push the data to the device
-    const ackReceived = waitForReply.then(res => {
+    const ackReceived = waitForReply.then((res) => {
       if (this.connectionInterface.device !== null) {
         // use the copied payload
         const fakeMessage = new Message(message.messageID, copiedPayload)
@@ -101,7 +101,7 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
     })
 
     // we require both a successful send and a successful ack
-    return Promise.all([queryPush, ackReceived]).catch(err => {
+    return Promise.all([queryPush, ackReceived]).catch((err) => {
       dDeliverabilityManager("Couldn't deliver message ", err)
       throw err
     })
