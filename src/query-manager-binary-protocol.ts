@@ -6,6 +6,7 @@ import {
 } from '@electricui/core'
 
 import { MESSAGEIDS } from '@electricui/protocol-binary-constants'
+import debug from 'debug'
 
 interface QueryManagerBinaryProtocolOptions {
   connectionInterface: ConnectionInterface
@@ -13,9 +14,7 @@ interface QueryManagerBinaryProtocolOptions {
   heartbeatMessageID?: string
 }
 
-const dQueryManager = require('debug')(
-  'electricui-protocol-binary:query-manager',
-)
+const dQueryManager = debug('electricui-protocol-binary:query-manager')
 
 export default class QueryManagerBinaryProtocol extends QueryManager {
   timeout: number
@@ -77,26 +76,24 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
 
     const queryPush = this.connectionInterface.writePipeline
       .push(message)
-      .catch((err) => {
+      .catch(err => {
         console.error('push failure', err)
         // in the event of a push failure, cancel the waitForReply
         cancel()
+
+        // Rethrow the error to be caught further up the chain
+        throw err
       })
 
     dQueryManager(`pushing query`)
 
     // we require both a successful send and a successful ack
-    return Promise.all([queryPush, waitForReply])
-      .then((result) => {
-        const [queryResult, waitForReplyResult] = result
+    return Promise.all([queryPush, waitForReply]).then(result => {
+      const [queryResult, waitForReplyResult] = result
 
-        dQueryManager(`waitForReplyResult`, waitForReplyResult)
+      dQueryManager(`waitForReplyResult`, waitForReplyResult)
 
-        return waitForReplyResult
-      })
-      .catch((err: Error) => {
-        dQueryManager("Couldn't get query ", err, err.stack)
-        throw err
-      })
+      return waitForReplyResult
+    })
   }
 }
