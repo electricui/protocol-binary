@@ -32,10 +32,7 @@ function roundTripFactory() {
   const decoder = new BinaryProtocolDecoder()
   const sink = new TestSink(spy)
 
-  source
-    .pipe(encoder)
-    .pipe(decoder)
-    .pipe(sink)
+  source.pipe(encoder).pipe(decoder).pipe(sink)
 
   return {
     source,
