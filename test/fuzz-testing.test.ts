@@ -48,7 +48,7 @@ const randomMessageID = (length: number) => {
 }
 
 describe('Binary Protocol Fuzz Testing', () => {
-  it.skip('correctly encodes and decodes messages at every payload length', async () => {
+  it('correctly encodes and decodes messages at every payload length', async () => {
     const { source, spy } = roundTripFactory()
 
     let messageIDLength = Math.floor(Math.random() * 15 + 1)
@@ -57,8 +57,8 @@ describe('Binary Protocol Fuzz Testing', () => {
       if (messageIDLength > 15) messageIDLength = 0
 
       const message = new Message(
-        'hey', //randomMessageID(messageIDLength++),
-        Buffer.from([0x00]), //pseudoRandomBytes(payloadLength),
+        randomMessageID(messageIDLength++),
+        pseudoRandomBytes(payloadLength),
       )
 
       const isAck = random.boolean()
@@ -69,11 +69,9 @@ describe('Binary Protocol Fuzz Testing', () => {
         query: random.boolean(),
         offset: random.boolean() ? null : random.number(65535),
         ack: isAck,
-        ackNum: isAck ? random.number(7) : 0,
+        ackNum: isAck ? random.arrayElement([1, 2]) : 0,
         timestamp: 0,
       }
-
-      delete message.metadata.ack
 
       if (message.payload !== null && message.payload.length === 0) {
         message.payload = null
@@ -81,9 +79,17 @@ describe('Binary Protocol Fuzz Testing', () => {
 
       await source.push(message)
 
-      const result = spy.getCall(payloadLength).args[0]
+      const result: Message<Buffer> = spy.getCall(payloadLength).args[0]
 
-      assert.deepEqual(result, message)
+      expect(message.deviceID).toEqual(result.deviceID)
+      expect(message.messageID).toEqual(result.messageID)
+      expect(message.payload).toEqual(result.payload)
+      expect(message.metadata.type).toEqual(result.metadata.type)
+      expect(message.metadata.internal).toEqual(result.metadata.internal)
+      expect(message.metadata.query).toEqual(result.metadata.query)
+      expect(message.metadata.offset).toEqual(result.metadata.offset)
+      expect(message.metadata.ack).toEqual(result.metadata.ack)
+      expect(message.metadata.ackNum).toEqual(result.metadata.ackNum)
     }
   })
 })

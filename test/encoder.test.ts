@@ -64,8 +64,6 @@ describe('BinaryProtocolEncoder', () => {
 
     const result = encodeWithPipeline(message)
 
-    console.log(result)
-
     const expected = Buffer.from([0x00, 0x40, 0x01, 0x78, 0xc3, 0x55])
 
     assert.deepEqual(result, expected)
