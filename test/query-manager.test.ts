@@ -1,5 +1,3 @@
-import 'mocha'
-
 import * as chai from 'chai'
 import * as sinon from 'sinon'
 
@@ -18,8 +16,8 @@ import {
   TypeCache,
 } from '@electricui/core'
 
-import QueryManagerBinaryProtocol from '../src/query-manager-binary-protocol'
 import MockTransport from './fixtures/mock-transport'
+import QueryManagerBinaryProtocol from '../src/query-manager-binary-protocol'
 
 const chaiAsPromised = require('chai-as-promised')
 chai.use(chaiAsPromised)
@@ -159,34 +157,37 @@ describe('Binary Protocol Query Manager', () => {
 
     await connection.removeUsageRequest('test')
 
-    const reply = <Message>await ackWrite
+    const reply: Message<null> = await ackWrite
 
     assert.strictEqual(reply.payload, 42)
   })
-  it('it resolves when a reply is received and is resiliant to a noisy connection', async () => {
-    const device = (message: Message) => {
-      const noise1 = new Message('wrong one', 52)
+  it(
+    'it resolves when a reply is received and is resiliant to a noisy connection',
+    async () => {
+      const device = (message: Message) => {
+        const noise1 = new Message('wrong one', 52)
 
-      // reply with the  ack message
-      const reply = new Message(message.messageID, 42)
-      reply.metadata.query = false
+        // reply with the  ack message
+        const reply = new Message(message.messageID, 42)
+        reply.metadata.query = false
 
-      return [noise1, reply]
+        return [noise1, reply]
+      }
+
+      const { receivedDataSpy, connection } = factory(device)
+
+      await connection.addUsageRequest('test', () => {})
+
+      const messageAck = new Message('ack', null)
+      messageAck.metadata.query = true
+
+      const ackWrite = connection.write(messageAck)
+
+      await connection.removeUsageRequest('test')
+
+      const reply: Message<null> = await ackWrite
+
+      assert.strictEqual(reply.payload, 42)
     }
-
-    const { receivedDataSpy, connection } = factory(device)
-
-    await connection.addUsageRequest('test', () => {})
-
-    const messageAck = new Message('ack', null)
-    messageAck.metadata.query = true
-
-    const ackWrite = connection.write(messageAck)
-
-    await connection.removeUsageRequest('test')
-
-    const reply = <Message>await ackWrite
-
-    assert.strictEqual(reply.payload, 42)
-  })
+  )
 })

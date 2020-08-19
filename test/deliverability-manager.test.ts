@@ -1,5 +1,3 @@
-import 'mocha'
-
 import * as chai from 'chai'
 import * as sinon from 'sinon'
 
@@ -20,8 +18,8 @@ import {
 } from '@electricui/core'
 
 import BinaryProtocolDecoder from '../src/decoder'
-import DeliverabilityManagerBinaryProtocol from '../src/deliverability-manager-binary-protocol'
 import BinaryProtocolEncoder from '../src/encoder'
+import DeliverabilityManagerBinaryProtocol from '../src/deliverability-manager-binary-protocol'
 import MockTransport from './fixtures/mock-transport'
 
 const chaiAsPromised = require('chai-as-promised')
@@ -195,8 +193,8 @@ describe('Binary Protocol Deliverability Manager', () => {
 
     await connection.removeUsageRequest('test')
 
-    assert.isTrue(caught)
-    assert.isRejected(noAckWrite)
+    expect(caught).toBeTruthy()
+    expect(noAckWrite).rejects
   })
   it('it resolves when a reply is received', async () => {
     const device = (message: Message) => {
@@ -220,7 +218,7 @@ describe('Binary Protocol Deliverability Manager', () => {
     await ackWrite
     await connection.removeUsageRequest('test')
 
-    assert.isFulfilled(ackWrite)
+    expect(ackWrite).resolves
   })
   it('it resolves when a reply is received and is resiliant to a noisy connection', async () => {
     const device = (message: Message) => {

@@ -103,7 +103,7 @@ export default class BinaryDecoderPipeline extends Pipeline {
 
   generateTimestamp: () => number = () => new Date().getTime()
 
-  constructor(options: BinaryPipelineOptions) {
+  constructor(options: BinaryPipelineOptions = {}) {
     super()
     this.crc = new CRC16()
     this.generateTimestamp = options.generateTimestamp ?? this.generateTimestamp

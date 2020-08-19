@@ -12,7 +12,7 @@ export default class MockDiscoveryHintProducer extends DiscoveryHintProducer {
     this.transportKey = 'mock'
   }
 
-  poll() {
+  async poll() {
     this.setPolling(true)
 
     for (let index = 0; index < this.emitCount; index++) {
@@ -40,7 +40,7 @@ export default class MockDiscoveryHintProducer extends DiscoveryHintProducer {
     }
   }
 
-  stopPolling() {
+  async stopPolling() {
     // in a real one you'd actually do something to abort connections etc.
     this.setPolling(false)
   }

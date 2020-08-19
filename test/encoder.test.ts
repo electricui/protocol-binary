@@ -1,5 +1,3 @@
-import 'mocha'
-
 import * as chai from 'chai'
 import * as sinon from 'sinon'
 
@@ -32,7 +30,7 @@ function encodeWithPipeline(testCase: Message) {
 
   source.push(testCase)
 
-  return <Buffer>spy.getCall(0).args[0]
+  return spy.getCall(0).args[0] as Buffer
 }
 
 describe('BinaryProtocolEncoder', () => {

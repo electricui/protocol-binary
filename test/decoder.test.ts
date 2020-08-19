@@ -1,5 +1,3 @@
-import 'mocha'
-
 import * as chai from 'chai'
 import * as sinon from 'sinon'
 
@@ -32,11 +30,11 @@ function decodeWithPipeline(testCase: Buffer) {
 
   source.push(testCase)
 
-  return <Message>spy.getCall(0).args[0]
+  return spy.getCall(0).args[0] as Message
 }
 
 describe('BinaryProtocolDecoder', () => {
-  it('correctly decodes a message without an offset', () => {
+  test('correctly decodes a message without an offset', () => {
     const packet = Buffer.from([
       0x01,
       0x14,

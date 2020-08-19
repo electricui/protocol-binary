@@ -173,7 +173,7 @@ export function encode(message: Message): Buffer {
 }
 
 export default class BinaryEncoderPipeline extends Pipeline {
-  constructor(options: BinaryPipelineOptions) {
+  constructor(options: BinaryPipelineOptions = {}) {
     super()
   }
 

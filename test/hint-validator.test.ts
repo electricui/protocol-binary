@@ -1,5 +1,3 @@
-import 'mocha'
-
 import * as chai from 'chai'
 import * as sinon from 'sinon'
 
@@ -147,7 +145,7 @@ describe('Binary Protocol Hint Validator', () => {
       assert.strictEqual(device.deviceID, 'fake-device')
       done()
     })
-  }).timeout(10_000)
+  }, 10_000)
   it('it resolves when the device replies after the 2nd request', done => {
     let attemptNum = 0
 
@@ -179,7 +177,7 @@ describe('Binary Protocol Hint Validator', () => {
       assert.strictEqual(device.deviceID, 'fake-device')
       done()
     })
-  }).timeout(10_000)
+  }, 10_000)
   it('it resolves when device only responds after 1 second', done => {
     let startTime = new Date().getTime()
 
@@ -210,7 +208,7 @@ describe('Binary Protocol Hint Validator', () => {
       assert.strictEqual(device.deviceID, 'fake-device')
       done()
     })
-  }).timeout(10_000)
+  }, 10_000)
   it("it doesn't resolve when the device replies after the timeout", done => {
     let startTime = new Date().getTime()
 
@@ -251,7 +249,7 @@ describe('Binary Protocol Hint Validator', () => {
 
       done()
     }, delayTime + 1000)
-  }).timeout(10_000)
+  }, 10_000)
 })
 
 /*

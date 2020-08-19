@@ -1,14 +1,12 @@
-import 'mocha'
-
 import * as chai from 'chai'
-import { pseudoRandomBytes } from 'crypto'
-import { random } from 'faker'
 import * as sinon from 'sinon'
 
 import { Message, Sink, Source, TypeCache } from '@electricui/core'
 
 import BinaryProtocolDecoder from '../src/decoder'
 import BinaryProtocolEncoder from '../src/encoder'
+import { pseudoRandomBytes } from 'crypto'
+import { random } from 'faker'
 
 const assert = chai.assert
 
@@ -50,7 +48,7 @@ const randomMessageID = (length: number) => {
 }
 
 describe('Binary Protocol Fuzz Testing', () => {
-  xit('correctly encodes and decodes messages at every payload length', async () => {
+  it.skip('correctly encodes and decodes messages at every payload length', async () => {
     const { source, spy } = roundTripFactory()
 
     let messageIDLength = Math.floor(Math.random() * 15 + 1)
@@ -72,11 +70,12 @@ describe('Binary Protocol Fuzz Testing', () => {
         offset: random.boolean() ? null : random.number(65535),
         ack: isAck,
         ackNum: isAck ? random.number(7) : 0,
+        timestamp: 0,
       }
 
       delete message.metadata.ack
 
-      if (message.payload.length === 0) {
+      if (message.payload !== null && message.payload.length === 0) {
         message.payload = null
       }
 
