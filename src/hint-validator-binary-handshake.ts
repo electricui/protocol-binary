@@ -1,4 +1,5 @@
 import {
+  CancellationToken,
   Connection,
   DeviceCandidate,
   DiscoveryHintValidator,
@@ -20,17 +21,18 @@ interface HintValidatorBinaryHandshakeOptions {
    */
   attemptTiming?: number[]
   /**
-   * The amount of time to wait before considering an attempt a timeout.
-   * By default it is 2 seconds.
-   */
-  timeout?: number
-  /**
    * If boardIDs are identical, this setting will include the comPath of the
    * serial link (if this is over a serial link) in the deviceID.
    *
    * By default false.
    */
   treatAllSerialDevicesAsSeparate?: boolean
+
+  /**
+   * How long to wait for the last attempt to reply.
+   * By default, 1 second
+   */
+  lastAttemptTimeout?: number
 }
 
 /**
@@ -56,30 +58,34 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
   treatAllSerialDevicesAsSeparate: boolean
   attemptTiming: number[]
   attemptIndex = 0
-  timeout: number
+  lastAttemptTimeout: number
   waitForReplyCancellationHandlers: Array<() => void> = []
   hasReceivedBoardID = false
-  finalTimeoutHandler: NodeJS.Timeout | null = null
   constructor(
     hint: Hint,
     connection: Connection,
+    cancellationToken: CancellationToken,
     options: HintValidatorBinaryHandshakeOptions = {},
   ) {
-    super(hint, connection)
+    super(hint, connection, cancellationToken)
 
     this.treatAllSerialDevicesAsSeparate =
       options.treatAllSerialDevicesAsSeparate ?? false
+
+    this.lastAttemptTimeout = options.lastAttemptTimeout ?? 1000
 
     /**
      * Arduino ATMEGA 2560s will not work if packets are sent after ~60ms after serial connections are opened and before ~900ms.
      * So we wait 1 second after sending a packet immediately.
      */
     this.attemptTiming = options.attemptTiming ?? [0, 1000]
-    this.timeout = options.timeout ?? 2000
 
     if (this.attemptTiming.length < 1) {
       throw new Error('There must be at least one attemptTiming entry.')
     }
+
+    // Cascade the cancellations down to the waitForReplies
+    cancellationToken.subscribe(this.cancelInFlight)
   }
 
   canValidate(hint: Hint): boolean {
@@ -87,24 +93,28 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     return true
   }
 
-  sendAttempt = async (attemptIndex: number) => {
+  sendAttempt = async (
+    attemptIndex: number,
+    cancellationToken: CancellationToken,
+  ) => {
     mark(`binary-validator:attempt-${attemptIndex}`)
     dBinaryHandshake(`Sending search attempt #${this.attemptIndex} `)
 
     // Setup the waitForReply handler
-    const { promise: waitForReply, cancel } = this.connection.waitForReply<
-      number
-    >((replyMessage: Message) => {
-      // Hint validator binary handshake attempt
-      return (
-        replyMessage.messageID === MESSAGEIDS.BOARD_IDENTIFIER &&
-        replyMessage.metadata.internal === true &&
-        replyMessage.metadata.query === false
-      )
-    }, this.timeout)
+    const waitForReply = this.connection.waitForReply<number>(
+      (replyMessage: Message) => {
+        // Hint validator binary handshake attempt
+        return (
+          replyMessage.messageID === MESSAGEIDS.BOARD_IDENTIFIER &&
+          replyMessage.metadata.internal === true &&
+          replyMessage.metadata.query === false
+        )
+      },
+      cancellationToken,
+    )
 
     // Add the cancellation handler to our list
-    this.waitForReplyCancellationHandlers.push(cancel)
+    this.waitForReplyCancellationHandlers.push(cancellationToken.cancel)
 
     // Request the board identifier
     const requestBoardIDMessage = new Message(MESSAGEIDS.BOARD_IDENTIFIER, null)
@@ -120,7 +130,7 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     })
 
     const caughtConnectionWriteAttempt = this.connection
-      .write(requestBoardIDMessage)
+      .write(requestBoardIDMessage, cancellationToken)
       .catch(e => {
         dBinaryHandshake(`Hint Validator write ${attemptIndex} failed`)
         dBinaryHandshake(e)
@@ -174,13 +184,9 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
 
     const candidate = new DeviceCandidate(boardIDString, this.connection)
 
-    this.pushDeviceCandidate(candidate)
+    this.pushDeviceCandidate(candidate, this.cancellationToken)
 
     this.complete()
-  }
-
-  onCancel = () => {
-    this.cancelInFlight()
   }
 
   cancelInFlight = () => {
@@ -189,10 +195,6 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     }
 
     this.waitForReplyCancellationHandlers = []
-
-    if (this.finalTimeoutHandler) {
-      clearTimeout(this.finalTimeoutHandler)
-    }
   }
 
   async startValidation() {
@@ -204,22 +206,26 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
 
     // Loop through our attempts and send them off at the correct times.
 
+    // Wait the appropriate amount of time for the first attempt
+
+    // wait the delay prescribed
+    await new Promise((resolve, reject) =>
+      setTimeout(resolve, this.attemptTiming[this.attemptIndex]),
+    )
+
     // While LESS THAN the COUNT => while the ID will be valid
     while (
       this.attemptIndex < this.attemptTiming.length &&
       !this.hasReceivedBoardID
     ) {
-      // make an attempt
+      // Halt if the higher level token has been cancelled
+      this.cancellationToken.haltIfCancelled()
 
+      // make an attempt
       dBinaryHandshake(
         `Delaying attempt #${this.attemptIndex} by ${
           this.attemptTiming[this.attemptIndex]
         }ms`,
-      )
-
-      // wait the delay prescribed
-      await new Promise((resolve, reject) =>
-        setTimeout(resolve, this.attemptTiming[this.attemptIndex]),
       )
 
       // If we've received it in the meantime, bail
@@ -230,18 +236,28 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
         return
       }
 
-      this.sendAttempt(this.attemptIndex)
+      const cancellationToken = new CancellationToken()
+
+      // Give up once we need to send the next one.
+      // If there is no next one, give up after the last attempt timeout time.
+      cancellationToken.deadline(
+        this.attemptTiming[this.attemptIndex + 1] ?? this.lastAttemptTimeout,
+      )
+
+      try {
+        await this.sendAttempt(this.attemptIndex, cancellationToken)
+      } catch (e) {
+        // If this wasn't a timeout, rethrow the error
+        if (!cancellationToken.caused(e)) {
+          throw e
+        }
+      }
 
       // iterate the index
       this.attemptIndex++
     }
 
-    // Wait for the timeout, if we haven't received anything by then, complete, we haven't found anything.
-    this.finalTimeoutHandler = setTimeout(() => {
-      if (!this.hasReceivedBoardID) {
-        dBinaryHandshake('Exhausted validator attempts, giving up.')
-        this.complete()
-      }
-    }, this.timeout)
+    dBinaryHandshake('Exhausted validator attempts, giving up.')
+    this.complete()
   }
 }
