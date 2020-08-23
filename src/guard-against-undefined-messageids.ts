@@ -1,4 +1,10 @@
-import { DuplexPipeline, Message, Pipeline, TypeCache } from '@electricui/core'
+import {
+  CancellationToken,
+  DuplexPipeline,
+  Message,
+  Pipeline,
+  TypeCache,
+} from '@electricui/core'
 
 /**
  * This pipeline throws errors if a typecache doesn't contain type information for a messageID
@@ -12,7 +18,7 @@ class UndefinedMessageIDGuardEncoderPipeline extends Pipeline {
     this.runtimeMessageIDs = runtimeMessageIDs
   }
 
-  receive(message: Message) {
+  receive(message: Message, cancellationToken: CancellationToken) {
     // if it's a developer namespaced packet we check the type cache for a type
     if (message.metadata.internal === false) {
       const cachedTypeData = this.typeCache.get(message.messageID)
@@ -27,7 +33,7 @@ class UndefinedMessageIDGuardEncoderPipeline extends Pipeline {
       }
     }
 
-    return this.push(message)
+    return this.push(message, cancellationToken)
   }
 }
 
@@ -37,8 +43,8 @@ class UndefinedMessageIDGuardDecoderPipeline extends Pipeline {
     super()
   }
 
-  receive(message: Message) {
-    return this.push(message)
+  receive(message: Message, cancellationToken: CancellationToken) {
+    return this.push(message, cancellationToken)
   }
 }
 
