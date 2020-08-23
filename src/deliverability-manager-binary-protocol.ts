@@ -1,4 +1,5 @@
 import {
+  CancellationToken,
   ConnectionInterface,
   DeliverabilityManager,
   Message,
@@ -23,7 +24,7 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
     this.timeout = options.timeout || 5000 // 5 second timeout for acks
   }
 
-  push(message: Message) {
+  push(message: Message, cancellationToken: CancellationToken) {
     const queryManager = this.connectionInterface.getQueryManager()
 
     // if there's no ack bit set, just send it blindly
@@ -31,7 +32,7 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
       dDeliverabilityManager(
         `No ack bit set for message ${message.messageID}, sending to query manager`,
       )
-      return queryManager.push(message)
+      return queryManager.push(message, cancellationToken)
     } else if (message.metadata.ackNum === 0) {
       // If the ack bit is high and the ackNum is 0, set it to 1
       // If the ack bit is high but the ackNum is not 0, leave the ackNum at whatever the queue set it to
@@ -63,29 +64,36 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
     const desiredMessageID = message.messageID
     const desiredackNum = message.metadata.ackNum
 
-    const { promise: waitForReply, cancel } = connection.waitForReply(
-      (replyMessage: Message) => {
-        // wait for a reply with the same ackNum and messageID
+    const waitForReply = connection.waitForReply((replyMessage: Message) => {
+      // wait for a reply with the same ackNum and messageID
 
-        return (
-          // we want it to be the same messageID
-          replyMessage.messageID === desiredMessageID &&
-          // it shouldn't be a query, it's just a reply
-          replyMessage.metadata.query === false &&
-          // and the reply needs to match the expected ackNum
-          replyMessage.metadata.ackNum === desiredackNum
-        )
-      },
-      this.timeout,
-      `Ack return #${desiredackNum} for messageID "${desiredMessageID}"`,
-    )
+      return (
+        // we want it to be the same messageID
+        replyMessage.messageID === desiredMessageID &&
+        // it shouldn't be a query, it's just a reply
+        replyMessage.metadata.query === false &&
+        // and the reply needs to match the expected ackNum
+        replyMessage.metadata.ackNum === desiredackNum
+      )
+    }, cancellationToken)
 
     // in the event of a push failure, cancel the waitForReply
-    const queryPush = queryManager.push(message).catch(err => {
-      cancel()
-      // Rethrow error
-      throw err
-    })
+    const queryPush = queryManager
+      .push(message, cancellationToken)
+      .catch(err => {
+        console.error('Deliverability Manager Push failure', err)
+
+        // in the event of a push failure, cancel the waitForReply in the next tick, but we'll rethrow our push error first
+        // so that any handlers above us know it was the push that failed, not that there was a cancellation
+        if (cancellationToken) {
+          setImmediate(() => {
+            cancellationToken.cancel()
+          })
+        }
+
+        // Rethrow the error to be caught further up the chain
+        throw err
+      })
 
     // ack reply received, push the data to the device
     const ackReceived = waitForReply.then(res => {
