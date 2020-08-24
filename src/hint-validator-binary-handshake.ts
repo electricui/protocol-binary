@@ -236,7 +236,9 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
         return
       }
 
-      const cancellationToken = new CancellationToken()
+      const cancellationToken = new CancellationToken(
+        'binary handshake attempt',
+      )
 
       // Give up once we need to send the next one.
       // If there is no next one, give up after the last attempt timeout time.
