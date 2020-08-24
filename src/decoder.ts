@@ -1,6 +1,6 @@
 import {} from '@electricui/build-rollup-config'
 
-import { Message, Pipeline } from '@electricui/core'
+import { CancellationToken, Message, Pipeline } from '@electricui/core'
 
 import { BinaryPipelineOptions } from './options'
 import { CRC16 } from '@electricui/utility-crc16'
@@ -112,7 +112,7 @@ export default class BinaryDecoderPipeline extends Pipeline {
   /**
    * Push object packets up the abstraction and reset the state machine.
    */
-  cycle = () => {
+  cycle = (cancellationToken: CancellationToken) => {
     d(`Cycling State Machine`, this.packet.messageID, ': ', this.packet.payload)
 
     const message = new Message(this.packet.messageID, this.packet.payload)
@@ -128,14 +128,18 @@ export default class BinaryDecoderPipeline extends Pipeline {
       timestamp: this.generateTimestamp(),
     }
 
-    return this.push(message)
+    return this.push(message, cancellationToken)
   }
 
   /**
    * Steps through the decoder state machine
    * @param {byte} byte of packet
    */
-  step = (b: number, statusContext: StatusContext) => {
+  step = (
+    b: number,
+    statusContext: StatusContext,
+    cancellationToken: CancellationToken,
+  ) => {
     switch (this.state) {
       case STATE.AWAITING_HEADER:
         d(
@@ -342,7 +346,7 @@ export default class BinaryDecoderPipeline extends Pipeline {
           statusContext.completed = true
 
           // push the packet up the pipeline and reset the state machine
-          return this.cycle()
+          return this.cycle(cancellationToken)
         }
 
         // we would have broken out if we had seen the last byte, so we keep going
@@ -355,7 +359,7 @@ export default class BinaryDecoderPipeline extends Pipeline {
     return null
   }
 
-  receive(packet: Buffer) {
+  receive(packet: Buffer, cancellationToken: CancellationToken) {
     // we assume something else handles framing, whether COBS or the TCP layer itself
     this.reset()
 
@@ -370,7 +374,7 @@ export default class BinaryDecoderPipeline extends Pipeline {
 
     // iterate over every byte provided
     for (let i = 0; i < packet.length; i++) {
-      result = this.step(packet[i], statusContext)
+      result = this.step(packet[i], statusContext, cancellationToken)
       // if an error occured during the cycle, break out of this loop and dump the error down the promise chain
       if (statusContext.error !== null) {
         return Promise.reject(statusContext.error)

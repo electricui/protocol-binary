@@ -1,4 +1,4 @@
-import { Message, Pipeline } from '@electricui/core'
+import { CancellationToken, Message, Pipeline } from '@electricui/core'
 
 import { ACK_NUM } from '@electricui/protocol-binary-constants'
 import { BinaryPipelineOptions } from './options'
@@ -177,7 +177,7 @@ export default class BinaryEncoderPipeline extends Pipeline {
     super()
   }
 
-  receive(message: Message) {
-    return this.push(encode(message))
+  receive(message: Message, cancellationToken: CancellationToken) {
+    return this.push(encode(message), cancellationToken)
   }
 }
