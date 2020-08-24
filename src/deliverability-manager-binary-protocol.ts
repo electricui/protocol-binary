@@ -21,10 +21,10 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
   constructor(options: DeliverabilityManagerBinaryProtocolOptions) {
     super(options.connectionInterface)
 
-    this.timeout = options.timeout || 5000 // 5 second timeout for acks
+    this.timeout = options.timeout || 1000 // 1 second timeout for acks
   }
 
-  push(message: Message, cancellationToken: CancellationToken) {
+  push(message: Message, writeCancellationToken: CancellationToken) {
     const queryManager = this.connectionInterface.getQueryManager()
 
     // if there's no ack bit set, just send it blindly
@@ -32,7 +32,7 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
       dDeliverabilityManager(
         `No ack bit set for message ${message.messageID}, sending to query manager`,
       )
-      return queryManager.push(message, cancellationToken)
+      return queryManager.push(message, writeCancellationToken)
     } else if (message.metadata.ackNum === 0) {
       // If the ack bit is high and the ackNum is 0, set it to 1
       // If the ack bit is high but the ackNum is not 0, leave the ackNum at whatever the queue set it to
@@ -59,6 +59,15 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
     const copiedPayload = message.payload
 
     const connection = this.connectionInterface.getConnection()
+
+    // Create a new CancellationToken - this will let us time out our ack and get
+    // the packet back on the queue
+    const cancellationToken = new CancellationToken(
+      `delivery of ${message.messageID}`,
+    )
+    cancellationToken.deadline(this.timeout)
+    // If the masater one is cancelled, cancel this one.
+    writeCancellationToken.subscribe(cancellationToken.cancel)
 
     // Create copies of the information we want in case they get mutated
     const desiredMessageID = message.messageID
