@@ -1,4 +1,10 @@
-import { DuplexPipeline, Message, Pipeline, TypeCache } from '@electricui/core'
+import {
+  CancellationToken,
+  DuplexPipeline,
+  Message,
+  Pipeline,
+  TypeCache,
+} from '@electricui/core'
 import { MESSAGEIDS, TYPES } from '@electricui/protocol-binary-constants'
 
 const internalTypes = {
@@ -21,7 +27,7 @@ class BinaryTypeCacheEncoderPipeline extends Pipeline {
     this.typeCache = typeCache
   }
 
-  receive(message: Message) {
+  receive(message: Message, cancellationToken: CancellationToken) {
     // if it's a developer namespaced packet we check the type cache for a type
     // and mutate the packet before encoding it
     if (message.metadata.internal === false) {
@@ -51,7 +57,7 @@ class BinaryTypeCacheEncoderPipeline extends Pipeline {
       }
     }
 
-    return this.push(message)
+    return this.push(message, cancellationToken)
   }
 }
 
@@ -65,13 +71,13 @@ class BinaryTypeCacheDecoderPipeline extends Pipeline {
     this.typeCache = typeCache
   }
 
-  receive(message: Message) {
+  receive(message: Message, cancellationToken: CancellationToken) {
     // if it's a developer namespaced packet we set the type cache to the correct type
     if (message.metadata.internal === false) {
       this.typeCache.set(message.messageID, message.metadata.type)
     }
 
-    return this.push(message)
+    return this.push(message, cancellationToken)
   }
 }
 
