@@ -115,7 +115,10 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
         fakeMessage.metadata.type = message.metadata.type
         fakeMessage.metadata.timestamp = res.metadata.timestamp // use the ack reply message timestamp
 
-        this.connectionInterface.device.receive(fakeMessage)
+        this.connectionInterface.device.receive(
+          fakeMessage,
+          this.connectionInterface.connection ?? undefined,
+        )
       }
     })
 
