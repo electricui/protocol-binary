@@ -11,7 +11,7 @@ const d = debug('electricui-protocol-binary:decoder')
 
 interface PartialPacket {
   messageID: string
-  payload: any
+  payload: Buffer
 
   // metadata defaults
   type: number
@@ -54,7 +54,7 @@ export default class BinaryDecoderPipeline extends Pipeline {
   crc: CRC16
   packet: PartialPacket = {
     messageID: '',
-    payload: null,
+    payload: Buffer.alloc(0),
 
     type: 0,
     internal: false,
@@ -69,7 +69,7 @@ export default class BinaryDecoderPipeline extends Pipeline {
   reset = () => {
     this.packet = {
       messageID: '',
-      payload: null,
+      payload: Buffer.alloc(0),
 
       type: 0,
       internal: false,
