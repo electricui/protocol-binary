@@ -3,7 +3,7 @@ import * as sinon from 'sinon'
 
 import { Message, Sink, Source, TypeCache } from '@electricui/core'
 
-import BinaryProtocolDecoder from '../src/decoder'
+import { BinaryProtocolDecoder } from '../src/decoder'
 
 const assert = chai.assert
 
@@ -35,17 +35,7 @@ function decodeWithPipeline(testCase: Buffer) {
 
 describe('BinaryProtocolDecoder', () => {
   test('correctly decodes a message without an offset', () => {
-    const packet = Buffer.from([
-      0x01,
-      0x14,
-      0x03,
-      0x61,
-      0x62,
-      0x63,
-      0x2a,
-      0x64,
-      0xba,
-    ])
+    const packet = Buffer.from([0x01, 0x14, 0x03, 0x61, 0x62, 0x63, 0x2a, 0x64, 0xba])
 
     const result = decodeWithPipeline(packet)
 

@@ -17,7 +17,7 @@ import {
   TypeCache,
 } from '@electricui/core'
 
-import BinaryProtocolDecoder from '../src/decoder'
+import { BinaryProtocolDecoder } from '../src/decoder'
 import BinaryProtocolEncoder from '../src/encoder'
 import DeliverabilityManagerBinaryProtocol from '../src/deliverability-manager-binary-protocol'
 import MockTransport from './fixtures/mock-transport'
@@ -123,10 +123,7 @@ describe('Binary Protocol Deliverability Manager', () => {
 
     await connection.removeUsageRequest('test')
 
-    assert.isTrue(
-      messageNoAck.metadata.ackNum === 0,
-      "The ack num was mutated when it shouldn't have been",
-    )
+    assert.isTrue(messageNoAck.metadata.ackNum === 0, "The ack num was mutated when it shouldn't have been")
 
     assert.isFulfilled(noAckWrite)
   })
@@ -156,15 +153,9 @@ describe('Binary Protocol Deliverability Manager', () => {
 
     await connection.removeUsageRequest('test')
 
-    assert.isTrue(
-      messageAck.metadata.ackNum > 0,
-      "The outgoing ack num wasn't mutated when it should have been",
-    )
+    assert.isTrue(messageAck.metadata.ackNum > 0, "The outgoing ack num wasn't mutated when it should have been")
 
-    assert.isTrue(
-      ackNum > 0,
-      "The device incoming ack number wasn't mutated when it should have been",
-    )
+    assert.isTrue(ackNum > 0, "The device incoming ack number wasn't mutated when it should have been")
 
     return assert.isFulfilled(noAckWrite)
   })

@@ -34,7 +34,7 @@ interface StatusContext {
   completed: boolean
 }
 
-export default class BinaryDecoderPipeline extends Pipeline {
+export class BinaryProtocolDecoder {
   state = STATE.AWAITING_HEADER
   headerBuffer = Buffer.alloc(3)
   headerCounter = 0 // 0 - 2 for 3 bytes of header
@@ -104,7 +104,6 @@ export default class BinaryDecoderPipeline extends Pipeline {
   generateTimestamp: () => number = () => new Date().getTime()
 
   constructor(options: BinaryPipelineOptions = {}) {
-    super()
     this.crc = new CRC16()
     this.generateTimestamp = options.generateTimestamp ?? this.generateTimestamp
   }
@@ -112,7 +111,7 @@ export default class BinaryDecoderPipeline extends Pipeline {
   /**
    * Push object packets up the abstraction and reset the state machine.
    */
-  cycle = (cancellationToken: CancellationToken) => {
+  cycle = () => {
     d(`Cycling State Machine`, this.packet.messageID, ': ', this.packet.payload)
 
     const message = new Message(this.packet.messageID, this.packet.payload)
@@ -128,7 +127,7 @@ export default class BinaryDecoderPipeline extends Pipeline {
       timestamp: this.generateTimestamp(),
     }
 
-    return this.push(message, cancellationToken)
+    return message
   }
 
   /**
@@ -138,7 +137,6 @@ export default class BinaryDecoderPipeline extends Pipeline {
   step = (
     b: number,
     statusContext: StatusContext,
-    cancellationToken: CancellationToken,
   ) => {
     switch (this.state) {
       case STATE.AWAITING_HEADER:
@@ -346,7 +344,7 @@ export default class BinaryDecoderPipeline extends Pipeline {
           statusContext.completed = true
 
           // push the packet up the pipeline and reset the state machine
-          return this.cycle(cancellationToken)
+          return this.cycle()
         }
 
         // we would have broken out if we had seen the last byte, so we keep going
@@ -358,13 +356,23 @@ export default class BinaryDecoderPipeline extends Pipeline {
 
     return null
   }
+}
+
+export class BinaryDecoderPipeline extends Pipeline {
+  private decoder: BinaryProtocolDecoder
+
+  constructor(options: BinaryPipelineOptions = {}) {
+    super()
+
+    this.decoder  = new BinaryProtocolDecoder(options)
+  }
 
   receive(packet: Buffer, cancellationToken: CancellationToken) {
     // we assume something else handles framing, whether COBS or the TCP layer itself
-    this.reset()
+    this.decoder.reset()
 
     // we want to know if we produce a packet, and return the promise of passing it up the chain
-    let result: Promise<any> | null = null
+    let result: Message<Buffer> | null = null
 
     // we pass a reference to this object so that the state machine can mutate it
     const statusContext = {
@@ -374,7 +382,7 @@ export default class BinaryDecoderPipeline extends Pipeline {
 
     // iterate over every byte provided
     for (let i = 0; i < packet.length; i++) {
-      result = this.step(packet[i], statusContext, cancellationToken)
+      result = this.decoder.step(packet[i], statusContext)
       // if an error occured during the cycle, break out of this loop and dump the error down the promise chain
       if (statusContext.error !== null) {
         return Promise.reject(statusContext.error)
@@ -383,7 +391,7 @@ export default class BinaryDecoderPipeline extends Pipeline {
 
     // if we completed successfully, push the packet promise down the chain
     if (statusContext.completed) {
-      return result as Promise<any>
+      return this.push(result, cancellationToken)
     }
 
     // otherwise we consumed some garbage

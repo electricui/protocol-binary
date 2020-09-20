@@ -1,6 +1,6 @@
 import { DuplexPipeline, TypeCache } from '@electricui/core'
 
-import BinaryDecoderPipeline from './decoder'
+import { BinaryDecoderPipeline } from './decoder'
 import BinaryEncoderPipeline from './encoder'
 import { BinaryPipelineOptions } from './options'
 

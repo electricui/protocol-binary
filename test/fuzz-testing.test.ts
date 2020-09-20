@@ -3,7 +3,7 @@ import * as sinon from 'sinon'
 
 import { Message, Sink, Source, TypeCache } from '@electricui/core'
 
-import BinaryProtocolDecoder from '../src/decoder'
+import { BinaryProtocolDecoder } from '../src/decoder'
 import BinaryProtocolEncoder from '../src/encoder'
 import { pseudoRandomBytes } from 'crypto'
 import { random } from 'faker'
@@ -30,15 +30,17 @@ function roundTripFactory() {
   const decoder = new BinaryProtocolDecoder()
   const sink = new TestSink(spy)
 
-  source.pipe(encoder).pipe(decoder).pipe(sink)
+  source
+    .pipe(encoder)
+    .pipe(decoder)
+    .pipe(sink)
 
   return {
     source,
     spy,
   }
 }
-const alphabet =
-  'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 const randomMessageID = (length: number) => {
   return Array(length)
     .join()
@@ -56,10 +58,7 @@ describe('Binary Protocol Fuzz Testing', () => {
     for (let payloadLength = 0; payloadLength <= 1023; payloadLength++) {
       if (messageIDLength > 15) messageIDLength = 0
 
-      const message = new Message(
-        randomMessageID(messageIDLength++),
-        pseudoRandomBytes(payloadLength),
-      )
+      const message = new Message(randomMessageID(messageIDLength++), pseudoRandomBytes(payloadLength))
 
       const isAck = random.boolean()
 
