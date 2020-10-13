@@ -19,8 +19,8 @@ class UndefinedMessageIDGuardEncoderPipeline extends Pipeline {
   }
 
   receive(message: Message, cancellationToken: CancellationToken) {
-    // if it's a developer namespaced packet we check the type cache for a type
-    if (message.metadata.internal === false) {
+    // if it's a developer namespaced packet that isn't a query, we check the type cache for a type
+    if (message.metadata.internal === false /*&& !message.metadata.query*/) {
       const cachedTypeData = this.typeCache.get(message.messageID)
 
       if (
