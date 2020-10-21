@@ -37,7 +37,6 @@
     "chai-subset": "^1.6.0",
     "faker": "^4.1.0",
     "mocha": "^5.2.0",
-    "mochawesome": "^3.1.1",
     "nyc": "^13.3.0",
     "performance-now": "^2.1.0",
     "rollup": "^1.31.1",
