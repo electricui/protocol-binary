@@ -81,7 +81,7 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
     const queryPush = this.connectionInterface.writePipeline
       .push(message, cancellationToken)
       .catch(err => {
-        console.error('Query Manager Push failure', err)
+        console.warn('Query Manager Push failure', err)
 
         // in the event of a push failure, cancel the waitForReply in the next tick, but we'll rethrow our push error first
         // so that any handlers above us know it was the push that failed, not that there was a cancellation
