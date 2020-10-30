@@ -90,7 +90,7 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
     const queryPush = queryManager
       .push(message, cancellationToken)
       .catch(err => {
-        console.error('Deliverability Manager Push failure', err)
+        console.warn('Deliverability Manager Push failure', err)
 
         // in the event of a push failure, cancel the waitForReply in the next tick, but we'll rethrow our push error first
         // so that any handlers above us know it was the push that failed, not that there was a cancellation
