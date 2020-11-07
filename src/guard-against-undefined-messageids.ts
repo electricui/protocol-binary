@@ -1,10 +1,4 @@
-import {
-  CancellationToken,
-  DuplexPipeline,
-  Message,
-  Pipeline,
-  TypeCache,
-} from '@electricui/core'
+import { CancellationToken, DuplexPipeline, Message, Pipeline, TypeCache } from '@electricui/core'
 
 /**
  * This pipeline throws errors if a typecache doesn't contain type information for a messageID
@@ -20,13 +14,10 @@ class UndefinedMessageIDGuardEncoderPipeline extends Pipeline {
 
   receive(message: Message, cancellationToken: CancellationToken) {
     // if it's a developer namespaced packet that isn't a query, we check the type cache for a type
-    if (message.metadata.internal === false /*&& !message.metadata.query*/) {
+    if (message.metadata.internal === false && !message.metadata.query) {
       const cachedTypeData = this.typeCache.get(message.messageID)
 
-      if (
-        cachedTypeData === undefined &&
-        !this.runtimeMessageIDs.includes(message.messageID)
-      ) {
+      if (cachedTypeData === undefined && !this.runtimeMessageIDs.includes(message.messageID)) {
         throw new Error(
           `MessageID '${message.messageID}' does not have a type in the type cache. It has not been received from the hardware yet. Perhaps there is a typo in the messageID, or the handshake has not been run yet, a hot reload might have wiped the type cache requiring a re-handshake.`,
         )
@@ -62,9 +53,6 @@ export class UndefinedMessageIDGuardPipeline extends DuplexPipeline {
     this.typeCache = typeCache
 
     this.readPipeline = new UndefinedMessageIDGuardDecoderPipeline()
-    this.writePipeline = new UndefinedMessageIDGuardEncoderPipeline(
-      typeCache,
-      runtimeMessageIDs,
-    )
+    this.writePipeline = new UndefinedMessageIDGuardEncoderPipeline(typeCache, runtimeMessageIDs)
   }
 }
