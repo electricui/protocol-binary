@@ -62,12 +62,10 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
 
     // Create a new CancellationToken - this will let us time out our ack and get
     // the packet back on the queue
-    const cancellationToken = new CancellationToken(
-      `delivery of ${message.messageID}`,
-    )
-    cancellationToken.deadline(this.timeout)
-    // If the masater one is cancelled, cancel this one.
-    writeCancellationToken.subscribe(cancellationToken.cancel)
+    const waitForReplyCancellationToken = new CancellationToken()
+    waitForReplyCancellationToken.deadline(this.timeout)
+    // Cancel the waitForReply request if the main write cancels
+    writeCancellationToken.subscribe(waitForReplyCancellationToken.cancel)
 
     // Create copies of the information we want in case they get mutated
     const desiredMessageID = message.messageID
@@ -84,21 +82,25 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
         // and the reply needs to match the expected ackNum
         replyMessage.metadata.ackNum === desiredackNum
       )
-    }, cancellationToken)
+    }, waitForReplyCancellationToken)
 
-    // in the event of a push failure, cancel the waitForReply
-    const queryPush = queryManager
-      .push(message, cancellationToken)
+    // The actual write
+    const write = queryManager
+      .push(message, writeCancellationToken)
       .catch(err => {
+        if (writeCancellationToken.caused(err)) {
+          return
+        }
+
+        dDeliverabilityManager("Couldn't deliver message ", err)
         console.warn('Deliverability Manager Push failure', err)
 
         // in the event of a push failure, cancel the waitForReply in the next tick, but we'll rethrow our push error first
         // so that any handlers above us know it was the push that failed, not that there was a cancellation
-        if (cancellationToken) {
-          setImmediate(() => {
-            cancellationToken.cancel()
-          })
-        }
+        // The Promise.all will take the actual error as the failure instead of the cancellation that will happen next tick.
+        setImmediate(() => {
+          waitForReplyCancellationToken.cancel()
+        })
 
         // Rethrow the error to be caught further up the chain
         throw err
@@ -120,12 +122,22 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
           this.connectionInterface.connection ?? undefined,
         )
       }
+    }).catch(err => {
+      if (waitForReplyCancellationToken.caused(err)) {
+        // Throw a proper error if the waitForReply times out
+        
+        throw new Error(`Ack for ${message.messageID}: ${message.payload} not received after ${this.timeout}ms`)
+      }
+
+      throw err
     })
 
-    // we require both a successful send and a successful ack
-    return Promise.all([queryPush, ackReceived]).catch(err => {
-      dDeliverabilityManager("Couldn't deliver message ", err)
-      throw err
+    // Wait for both the write and the ack to be received
+    return Promise.all([write, ackReceived]).then(res => {
+      // On success, return the write result
+      const [writeResult, ackResult] = res
+
+      return writeResult
     })
   }
 }
