@@ -1,6 +1,6 @@
 {
   "name": "@electricui/protocol-binary",
-  "version": "0.7.23-prerelease.1",
+  "version": "0.7.23-prerelease.2",
   "description": "ElectricUI Binary Protocol Parser",
   "electricui-dev": true,
   "author": "Electric UI <support@electricui.com> (https://electricui.com)",
@@ -14,14 +14,14 @@
     "manifest.json"
   ],
   "dependencies": {
-    "@electricui/core": "^0.7.23-prerelease.1",
-    "@electricui/protocol-binary-constants": "^0.7.22",
-    "@electricui/utility-crc16": "^0.7.22",
+    "@electricui/core": "^0.7.23-prerelease.2",
+    "@electricui/protocol-binary-constants": "^0.7.23-prerelease.2",
+    "@electricui/utility-crc16": "^0.7.23-prerelease.2",
     "debug": "^4.1.1"
   },
   "devDependencies": {
-    "@electricui/build-rollup-config": "^0.7.22",
-    "@electricui/jest-config": "^0.7.17",
+    "@electricui/build-rollup-config": "^0.7.23-prerelease.2",
+    "@electricui/jest-config": "^0.7.23-prerelease.2",
     "@types/bluebird": "^3.5.25",
     "@types/chai": "^4.1.7",
     "@types/chai-as-promised": "^7.1.0",
