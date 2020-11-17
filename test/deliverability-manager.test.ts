@@ -2,6 +2,7 @@ import * as chai from 'chai'
 import * as sinon from 'sinon'
 
 import {
+  CancellationToken,
   Connection,
   ConnectionInterface,
   DeliverabilityManagerDumb,
@@ -21,6 +22,7 @@ import { BinaryProtocolDecoder } from '../src/decoder'
 import BinaryProtocolEncoder from '../src/encoder'
 import DeliverabilityManagerBinaryProtocol from '../src/deliverability-manager-binary-protocol'
 import MockTransport from './fixtures/mock-transport'
+import { expect } from 'chai'
 
 const chaiAsPromised = require('chai-as-promised')
 chai.use(chaiAsPromised)
@@ -57,9 +59,10 @@ function factory(receiveDataCallback: fakeDevice) {
       // send the reply back up the pipeline asynchronously
 
       for (const reply of replies) {
+        const cancellationToken = new CancellationToken()
         const promise = new Promise((resolve, reject) => {
           setImmediate(() => {
-            transport.readPipeline.push(reply).then(res => resolve(res))
+            transport.readPipeline.push(reply, cancellationToken).then(res => resolve(res))
           })
         })
         promises.push(promise)
@@ -89,13 +92,7 @@ function factory(receiveDataCallback: fakeDevice) {
   connectionInterface.generateHash()
   connectionInterface.finalise()
 
-  const deviceManager = new DeviceManager()
-  const connection = new Connection({
-    connectionInterface,
-    deviceManager,
-    connectionStateUpdateCallback: () => {},
-    connectionUsageRequestUpdateCallback: () => {},
-  })
+  const connection = new Connection(connectionInterface)
 
   return {
     receivedDataSpy,
@@ -112,12 +109,14 @@ describe('Binary Protocol Deliverability Manager', () => {
 
     const { receivedDataSpy, connection } = factory(device)
 
-    await connection.addUsageRequest('test', () => {})
+    const cancellationToken = new CancellationToken()
+
+    await connection.addUsageRequest('test', cancellationToken)
 
     const messageNoAck = new Message('noAck', 1)
     messageNoAck.metadata.ack = false
 
-    const noAckWrite = connection.write(messageNoAck)
+    const noAckWrite = connection.write(messageNoAck, cancellationToken)
 
     await noAckWrite
 
@@ -126,6 +125,8 @@ describe('Binary Protocol Deliverability Manager', () => {
     assert.isTrue(messageNoAck.metadata.ackNum === 0, "The ack num was mutated when it shouldn't have been")
 
     assert.isFulfilled(noAckWrite)
+
+    expect(
   })
 
   it('it mutates the ackNum when the ack bit is set', async () => {

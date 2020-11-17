@@ -1,9 +1,8 @@
 import * as chai from 'chai'
 import * as sinon from 'sinon'
 
-import { Message, Sink, Source, TypeCache } from '@electricui/core'
-
-import { BinaryProtocolDecoder } from '../src/decoder'
+import { BinaryDecoderPipeline, BinaryProtocolDecoder } from '../src/decoder'
+import { CancellationToken, Message, Sink, Source, TypeCache } from '@electricui/core'
 
 const assert = chai.assert
 
@@ -23,12 +22,14 @@ function decodeWithPipeline(testCase: Buffer) {
   const spy = sinon.spy()
 
   const source = new Source()
-  const decoder = new BinaryProtocolDecoder()
+  const decoder = new BinaryDecoderPipeline()
   const sink = new TestSink(spy)
 
   source.pipe(decoder).pipe(sink)
 
-  source.push(testCase)
+  const cancellationToken = new CancellationToken()
+
+  source.push(testCase, cancellationToken)
 
   return spy.getCall(0).args[0] as Message
 }
