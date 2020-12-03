@@ -1,9 +1,4 @@
-import {
-  CancellationToken,
-  ConnectionInterface,
-  DeliverabilityManager,
-  Message,
-} from '@electricui/core'
+import { CancellationToken, ConnectionInterface, DeliverabilityManager, Message } from '@electricui/core'
 
 import { MAX_ACK_NUM } from '@electricui/protocol-binary-constants'
 
@@ -12,9 +7,7 @@ interface DeliverabilityManagerBinaryProtocolOptions {
   timeout?: number
 }
 
-const dDeliverabilityManager = require('debug')(
-  'electricui-protocol-binary:deliverability-manager',
-)
+const dDeliverabilityManager = require('debug')('electricui-protocol-binary:deliverability-manager')
 export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityManager {
   timeout: number
 
@@ -29,17 +22,13 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
 
     // if there's no ack bit set, just send it blindly
     if (!message.metadata.ack) {
-      dDeliverabilityManager(
-        `No ack bit set for message ${message.messageID}, sending to query manager`,
-      )
+      dDeliverabilityManager(`No ack bit set for message ${message.messageID}, sending to query manager`)
       return queryManager.push(message, writeCancellationToken)
     } else if (message.metadata.ackNum === 0) {
       // If the ack bit is high and the ackNum is 0, set it to 1
       // If the ack bit is high but the ackNum is not 0, leave the ackNum at whatever the queue set it to
 
-      dDeliverabilityManager(
-        `Ack bit set for message ${message.messageID}, incrementing ack number`,
-      )
+      dDeliverabilityManager(`Ack bit set for message ${message.messageID}, incrementing ack number`)
 
       message.metadata.ackNum = 1
     }
@@ -47,9 +36,7 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
     if (message.metadata.ackNum > MAX_ACK_NUM) {
       console.warn(`A message got through with an ackNum > ${MAX_ACK_NUM}`)
       console.trace()
-      return Promise.reject(
-        new Error(`Cannot send message with ackNum > ${MAX_ACK_NUM}`),
-      )
+      return Promise.reject(new Error(`Cannot send message with ackNum > ${MAX_ACK_NUM}`))
     }
 
     // mutate the query bit to reflect that we want an ack back
@@ -69,73 +56,90 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
 
     // Create copies of the information we want in case they get mutated
     const desiredMessageID = message.messageID
-    const desiredackNum = message.metadata.ackNum
+    const desiredAckNum = message.metadata.ackNum
 
-    const waitForReply = connection.waitForReply((replyMessage: Message) => {
-      // wait for a reply with the same ackNum and messageID
+    // If the write is successful but we time out,
+    const writeState = {
+      failure: false,
+    }
 
-      return (
-        // we want it to be the same messageID
-        replyMessage.messageID === desiredMessageID &&
-        // it shouldn't be a query, it's just a reply
-        replyMessage.metadata.query === false &&
-        // and the reply needs to match the expected ackNum
-        replyMessage.metadata.ackNum === desiredackNum
-      )
-    }, waitForReplyCancellationToken)
+    const waitForReply = connection
+      .waitForReply((replyMessage: Message) => {
+        // wait for a reply with the same ackNum and messageID
 
-    // The actual write
-    const write = queryManager
-      .push(message, writeCancellationToken)
+        return (
+          // we want it to be the same messageID
+          replyMessage.messageID === desiredMessageID &&
+          // it shouldn't be a query, it's just a reply
+          replyMessage.metadata.query === false &&
+          // and the reply needs to match the expected ackNum
+          replyMessage.metadata.ackNum === desiredAckNum
+        )
+      }, waitForReplyCancellationToken)
       .catch(err => {
-        if (writeCancellationToken.caused(err)) {
+        // If the write was cancelled, we don't care about this timing out.
+        if (writeCancellationToken.isCancelled()) {
           return
         }
 
-        dDeliverabilityManager("Couldn't deliver message ", err)
-        console.warn('Deliverability Manager Push failure', err)
+        // If the write failed first, we only want that error to propagate to the Promise.all()
+        // It already happened, so let this fail silently.
+        if (writeState.failure) {
+          return
+        }
 
-        // in the event of a push failure, cancel the waitForReply in the next tick, but we'll rethrow our push error first
-        // so that any handlers above us know it was the push that failed, not that there was a cancellation
-        // The Promise.all will take the actual error as the failure instead of the cancellation that will happen next tick.
-        setImmediate(() => {
-          waitForReplyCancellationToken.cancel()
-        })
+        if (waitForReplyCancellationToken.caused(err)) {
+          // Throw a proper error if the waitForReply times out
 
-        // Rethrow the error to be caught further up the chain
+          throw new Error(`Ack for ${message.messageID}: ${message.payload} not received after ${this.timeout}ms`)
+        }
+
         throw err
       })
 
-    // ack reply received, push the data to the device
-    const ackReceived = waitForReply.then(res => {
-      if (this.connectionInterface.device !== null) {
-        // use the copied payload
-        const fakeMessage = new Message(message.messageID, copiedPayload)
-        fakeMessage.metadata.query = false
-        fakeMessage.metadata.ackNum = desiredackNum
-        fakeMessage.metadata.internal = message.metadata.internal
-        fakeMessage.metadata.type = message.metadata.type
-        fakeMessage.metadata.timestamp = res.metadata.timestamp // use the ack reply message timestamp
-
-        this.connectionInterface.device.receive(
-          fakeMessage,
-          this.connectionInterface.connection ?? undefined,
-        )
-      }
-    }).catch(err => {
-      if (waitForReplyCancellationToken.caused(err)) {
-        // Throw a proper error if the waitForReply times out
-        
-        throw new Error(`Ack for ${message.messageID}: ${message.payload} not received after ${this.timeout}ms`)
+    // The actual write
+    const write = queryManager.push(message, writeCancellationToken).catch(err => {
+      if (writeCancellationToken.caused(err)) {
+        return
       }
 
+      dDeliverabilityManager("Couldn't deliver message ", err)
+      console.warn('Deliverability Manager Push failure', err)
+
+      writeState.failure = true
+
+      // in the event of a push failure, cancel the waitForReply in the next tick, but we'll rethrow our push error first
+      // so that any handlers above us know it was the push that failed, not that there was a cancellation
+      // The Promise.all will take the actual error as the failure instead of the cancellation that will happen next tick.
+      setImmediate(() => {
+        waitForReplyCancellationToken.cancel()
+      })
+
+      // Rethrow the error to be caught further up the chain
       throw err
     })
 
     // Wait for both the write and the ack to be received
-    return Promise.all([write, ackReceived]).then(res => {
+    return Promise.all([write, waitForReply]).then(res => {
       // On success, return the write result
       const [writeResult, ackResult] = res
+
+      if (!ackResult) {
+        console.warn('Race condition detected in deliverability manager')
+      }
+
+      // Receive the new payload
+      if (this.connectionInterface.device !== null && ackResult) {
+        // use the copied payload
+        const fakeMessage = new Message(message.messageID, copiedPayload)
+        fakeMessage.metadata.query = false
+        fakeMessage.metadata.ackNum = desiredAckNum
+        fakeMessage.metadata.internal = message.metadata.internal
+        fakeMessage.metadata.type = message.metadata.type
+        fakeMessage.metadata.timestamp = ackResult.metadata.timestamp // use the ack reply message timestamp
+
+        this.connectionInterface.device.receive(fakeMessage, this.connectionInterface.connection ?? undefined)
+      }
 
       return writeResult
     })
