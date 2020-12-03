@@ -101,7 +101,7 @@ export class BinaryProtocolDecoder {
     this.crc.reset()
   }
 
-  generateTimestamp: () => number = () => new Date().getTime()
+  generateTimestamp: () => number = typeof performance != 'undefined' ? () => performance.now() : Date.now
 
   constructor(options: BinaryPipelineOptions = {}) {
     this.crc = new CRC16()
@@ -134,17 +134,10 @@ export class BinaryProtocolDecoder {
    * Steps through the decoder state machine
    * @param {byte} byte of packet
    */
-  step = (
-    b: number,
-    statusContext: StatusContext,
-  ) => {
+  step = (b: number, statusContext: StatusContext) => {
     switch (this.state) {
       case STATE.AWAITING_HEADER:
-        d(
-          `Received header byte #${this.headerCounter}: ${Buffer.from([
-            b,
-          ]).toString('hex')}`,
-        )
+        d(`Received header byte #${this.headerCounter}: ${Buffer.from([b]).toString('hex')}`)
         // set the header buffer byte at the right indice to the byte we just received
         this.headerBuffer[this.headerCounter] = b
 
@@ -200,9 +193,9 @@ export class BinaryProtocolDecoder {
         break
       case STATE.AWAITING_MESSAGEID:
         d(
-          `Received messageID byte #${this.messageIDCounter + 1}/${
-            this.expectedMessageIDLen
-          }: ${Buffer.from([b]).toString('hex')}`,
+          `Received messageID byte #${this.messageIDCounter + 1}/${this.expectedMessageIDLen}: ${Buffer.from([
+            b,
+          ]).toString('hex')}`,
         )
 
         // set the messageID buffer byte at the right indice to the byte we just received
@@ -243,20 +236,12 @@ export class BinaryProtocolDecoder {
         this.crc.step(b)
 
         if (this.offsetCounter === 0) {
-          d(
-            `Consuming the first offset byte: ${Buffer.from([b]).toString(
-              'hex',
-            )}`,
-          )
+          d(`Consuming the first offset byte: ${Buffer.from([b]).toString('hex')}`)
           // merge in the first byte
 
           this.offsetUInt16Array[0] |= b
         } else if (this.offsetCounter === 1) {
-          d(
-            `Consuming the second offset byte: ${Buffer.from([b]).toString(
-              'hex',
-            )}`,
-          )
+          d(`Consuming the second offset byte: ${Buffer.from([b]).toString('hex')}`)
 
           // bitshift and merge in the second byte
           this.offsetUInt16Array[0] |= b << 8
@@ -280,9 +265,9 @@ export class BinaryProtocolDecoder {
         break
       case STATE.AWAITING_PAYLOAD:
         d(
-          `Received payload byte #${this.payloadCounter + 1}/${
-            this.expectedPayloadLength
-          }: ${Buffer.from([b]).toString('hex')}`,
+          `Received payload byte #${this.payloadCounter + 1}/${this.expectedPayloadLength}: ${Buffer.from([b]).toString(
+            'hex',
+          )}`,
         )
 
         // set the payload buffer byte at the right indice to the byte we just received
@@ -308,20 +293,12 @@ export class BinaryProtocolDecoder {
         break
       case STATE.AWAITING_CHECKSUM:
         if (this.checksumCounter === 0) {
-          d(
-            `Consuming the first checksum byte: ${Buffer.from([b]).toString(
-              'hex',
-            )}`,
-          )
+          d(`Consuming the first checksum byte: ${Buffer.from([b]).toString('hex')}`)
 
           // merge in the first byte
           this.checksumUInt16Array[0] |= b
         } else if (this.checksumCounter === 1) {
-          d(
-            `Consuming the second checksum byte: ${Buffer.from([b]).toString(
-              'hex',
-            )}`,
-          )
+          d(`Consuming the second checksum byte: ${Buffer.from([b]).toString('hex')}`)
 
           // bitshift and merge in the second byte
           this.checksumUInt16Array[0] |= b << 8
@@ -364,7 +341,7 @@ export class BinaryDecoderPipeline extends Pipeline {
   constructor(options: BinaryPipelineOptions = {}) {
     super()
 
-    this.decoder  = new BinaryProtocolDecoder(options)
+    this.decoder = new BinaryProtocolDecoder(options)
   }
 
   receive(packet: Buffer, cancellationToken: CancellationToken) {
