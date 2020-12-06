@@ -6,6 +6,7 @@ import { BinaryPipelineOptions } from './options'
 import { CRC16 } from '@electricui/utility-crc16'
 import ERRORS from './errors'
 import debug from 'debug'
+import { timing } from '@electricui/timing'
 
 const d = debug('electricui-protocol-binary:decoder')
 
@@ -101,7 +102,7 @@ export class BinaryProtocolDecoder {
     this.crc.reset()
   }
 
-  generateTimestamp: () => number = typeof performance != 'undefined' ? () => performance.now() : Date.now
+  generateTimestamp = timing.now
 
   constructor(options: BinaryPipelineOptions = {}) {
     this.crc = new CRC16()
