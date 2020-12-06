@@ -373,9 +373,7 @@ export class BinaryDecoderPipeline extends Pipeline {
     }
 
     // otherwise we consumed some garbage
-    if (__DEV__) {
-      console.warn('Garbage packet received', packet)
-    }
+    d('Garbage packet received', packet)
 
     // Reject back down the chain to the transport
     return Promise.reject(packet)
