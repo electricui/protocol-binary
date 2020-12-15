@@ -41,7 +41,7 @@ export class BinaryProtocolDecoder {
   state = STATE.AWAITING_HEADER
   headerBuffer = Buffer.alloc(3)
   headerCounter = 0 // 0 - 2 for 3 bytes of header
-  messageIDBuffer = Buffer.alloc(16) // maximum sized messageID length
+  messageIDBuffer = Buffer.alloc(15) // maximum sized messageID length
   expectedMessageIDLen = 0
   messageIDCounter = 0
   offsetUInt16Array = new Uint16Array([0x0000])
