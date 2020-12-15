@@ -35,11 +35,13 @@ interface StatusContext {
   completed: boolean
 }
 
+const blankHoldingBuffer = Buffer.alloc(0)
+
 export class BinaryProtocolDecoder {
   state = STATE.AWAITING_HEADER
   headerBuffer = Buffer.alloc(3)
   headerCounter = 0 // 0 - 2 for 3 bytes of header
-  messageIDBuffer: Buffer | null = null // we'll allocate a buffer later
+  messageIDBuffer = Buffer.alloc(16) // maximum sized messageID length
   expectedMessageIDLen = 0
   messageIDCounter = 0
   offsetUInt16Array = new Uint16Array([0x0000])
@@ -52,10 +54,12 @@ export class BinaryProtocolDecoder {
   largestPayloadSizeSeen = 0
   messageContainsOffset = false
 
+  payloadHeader = new Uint16Array([0x0000])
+
   crc: CRC16
   packet: PartialPacket = {
     messageID: '',
-    payload: Buffer.alloc(0),
+    payload: blankHoldingBuffer, // The reference to this is replaced during the decode, no point re-allocating it every time
 
     type: 0,
     internal: false,
@@ -70,7 +74,7 @@ export class BinaryProtocolDecoder {
   reset = () => {
     this.packet = {
       messageID: '',
-      payload: Buffer.alloc(0),
+      payload: blankHoldingBuffer, // The reference to this is replaced during the decode, no point re-allocating it every time
 
       type: 0,
       internal: false,
@@ -81,15 +85,20 @@ export class BinaryProtocolDecoder {
 
     this.state = STATE.AWAITING_HEADER
 
-    this.headerBuffer = Buffer.alloc(3)
+    // Mutate the existing buffer instead of re-allocating
+    this.headerBuffer[0] = 0x00
+    this.headerBuffer[1] = 0x00
+    this.headerBuffer[2] = 0x00
     this.headerCounter = 0 // 0 - 2 for 3 bytes of header
 
-    this.messageIDBuffer = null // we'll allocate a buffer later
+    // this.messageIDBuffer.fill(0) // Since we put bytes in one at a time, we don't actually need to wipe this
     this.expectedMessageIDLen = 0
     this.messageIDCounter = 0
 
-    this.offsetUInt16Array = new Uint16Array([0x0000])
+    this.offsetUInt16Array[0] = 0x0000
     this.offsetCounter = 0
+
+    this.payloadHeader[0] = 0x0000
 
     this.payloadBuffer = null // we'll allocate a buffer later
     this.expectedPayloadLength = 0
@@ -97,7 +106,7 @@ export class BinaryProtocolDecoder {
 
     this.messageContainsOffset = false
 
-    this.checksumUInt16Array = new Uint16Array([0x0000])
+    this.checksumUInt16Array[0] = 0x0000
     this.checksumCounter = 0
     this.crc.reset()
   }
@@ -150,15 +159,14 @@ export class BinaryProtocolDecoder {
           d('Parsing header')
 
           // extract the uint16 from the first two bytes of the header
-          const payloadHeader = new Uint16Array([0x0000])
-          payloadHeader[0] |= this.headerBuffer[0]
-          payloadHeader[0] |= this.headerBuffer[1] << 8
+          this.payloadHeader[0] |= this.headerBuffer[0]
+          this.payloadHeader[0] |= this.headerBuffer[1] << 8
 
           // the first 10 bits are payload length
-          this.expectedPayloadLength = payloadHeader[0] & 0x03ff // prettier-ignore
-          this.packet.type = (payloadHeader[0] & 0x3c00) >>> 10 // prettier-ignore
-          this.packet.internal = (payloadHeader[0] & 0x4000) === 0x4000 // prettier-ignore
-          this.messageContainsOffset = (payloadHeader[0] & 0x8000) === 0x8000 // prettier-ignore
+          this.expectedPayloadLength = this.payloadHeader[0] & 0x03ff // prettier-ignore
+          this.packet.type = (this.payloadHeader[0] & 0x3c00) >>> 10 // prettier-ignore
+          this.packet.internal = (this.payloadHeader[0] & 0x4000) === 0x4000 // prettier-ignore
+          this.messageContainsOffset = (this.payloadHeader[0] & 0x8000) === 0x8000 // prettier-ignore
 
           // allocate buffer for the payloadLength
           this.payloadBuffer = Buffer.alloc(this.expectedPayloadLength)
@@ -171,9 +179,6 @@ export class BinaryProtocolDecoder {
           this.expectedMessageIDLen = this.headerBuffer[2] & 0x0f // prettier-ignore
           this.packet.query = (this.headerBuffer[2] & 0x10) === 0x10 // prettier-ignore
           this.packet.ackNum = this.headerBuffer[2] >>> 5 // prettier-ignore
-
-          // allocate buffer for the messageID
-          this.messageIDBuffer = Buffer.alloc(this.expectedMessageIDLen)
 
           d(`\t expectedMessageIDLen: ${this.expectedMessageIDLen}`)
           d(`\t query: ${this.packet.query}`)
@@ -200,7 +205,7 @@ export class BinaryProtocolDecoder {
         )
 
         // set the messageID buffer byte at the right indice to the byte we just received
-        this.messageIDBuffer![this.messageIDCounter] = b
+        this.messageIDBuffer[this.messageIDCounter] = b
 
         // Run the checksum
         this.crc.step(b)
@@ -212,7 +217,8 @@ export class BinaryProtocolDecoder {
           // Transfer the messageID buffer into the messageID property in the
           // correct type.
 
-          this.packet.messageID = this.messageIDBuffer!.toString('utf8')
+          // Only convert the part of the string that's expected, ignore the rest of the buffer
+          this.packet.messageID = this.messageIDBuffer.toString('utf8', 0, this.expectedMessageIDLen)
 
           d(`\t messageID: ${this.packet.messageID}`)
 
