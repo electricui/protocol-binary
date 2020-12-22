@@ -1,6 +1,6 @@
 {
   "name": "@electricui/protocol-binary",
-  "version": "0.7.35-prerelease.20",
+  "version": "0.8.0",
   "description": "ElectricUI Binary Protocol Parser",
   "electricui-dev": true,
   "author": "Electric UI <support@electricui.com> (https://electricui.com)",
@@ -18,15 +18,15 @@
     "manifest.json"
   ],
   "dependencies": {
-    "@electricui/core": "^0.7.35-prerelease.20",
-    "@electricui/protocol-binary-constants": "^0.7.35-prerelease.20",
-    "@electricui/timing": "^0.7.35-prerelease.20",
-    "@electricui/utility-crc16": "^0.7.35-prerelease.20",
+    "@electricui/core": "^0.8.0",
+    "@electricui/protocol-binary-constants": "^0.8.0",
+    "@electricui/timing": "^0.8.0",
+    "@electricui/utility-crc16": "^0.8.0",
     "debug": "^4.3.1"
   },
   "devDependencies": {
-    "@electricui/build-rollup-config": "^0.7.35-prerelease.20",
-    "@electricui/jest-config": "^0.7.35-prerelease.20",
+    "@electricui/build-rollup-config": "^0.8.0",
+    "@electricui/jest-config": "^0.8.0",
     "@sinonjs/fake-timers": "^6.0.1",
     "@types/bluebird": "^3.5.25",
     "@types/chai": "^4.1.7",
