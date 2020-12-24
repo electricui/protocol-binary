@@ -7,7 +7,7 @@ import { CRC16 } from '@electricui/utility-crc16'
 const debug = require('debug')('electricui-protocol-binary:encoder')
 
 /**
- * Generates an eUI Binary Packet
+ * Generates an Electric UI Binary Packet
  * @export
  * @param {Message} message
  * @returns {Buffer}
@@ -22,9 +22,7 @@ export function encode(message: Message): Buffer {
 
   // Check that the type is of the correct size, it's a 4 bit int.
   if (type < 0 || type > 15) {
-    throw new TypeError(
-      'eUI Packet Type must have a value between 0 and 15 (inclusive)',
-    )
+    throw new TypeError('Packet type must have a value between 0 and 15 (inclusive)')
   }
 
   let offsetBuffer = null
@@ -35,9 +33,7 @@ export function encode(message: Message): Buffer {
 
     // Check that the offset length is of the correct size, it's a 16bit int.
     if (offset < 0 || offset > 65535) {
-      throw new TypeError(
-        'eUI offsets must be between 0 and 65535 (inclusive) or null.',
-      )
+      throw new TypeError('Offsets must be between 0 and 65535 (inclusive) or null.')
     }
 
     offsetBuffer = Buffer.from(Uint16Array.from([offset]).buffer)
@@ -50,7 +46,7 @@ export function encode(message: Message): Buffer {
   // Check that the messageID length is of the correct size, it's a 4bit int.
   if (messageIDLength <= 0 || messageIDLength > 15) {
     throw new TypeError(
-      'eUI messageID Lengths must be between 1 and 15 (inclusive).',
+      `MessageID Lengths must be between 1 and 15 (inclusive), ${message.messageID} is ${message.messageID.length} characters long.`,
     )
   }
 
@@ -60,29 +56,19 @@ export function encode(message: Message): Buffer {
 
   // Check that the payload length is of the correct size, it's a 10bit int.
   if (payloadLength < 0 || payloadLength > 1023) {
-    throw new TypeError(
-      'eUI payload lengths must be between 0 and 1023 (inclusive).',
-    )
+    throw new TypeError('Payload lengths must be between 0 and 1023 (inclusive).')
   }
 
   let ackNumToSend = ackNum
 
   if (ackNum > 0 && !ack) {
-    console.warn(
-      'The ackNum > 0 (',
-      ackNum,
-      '), but there is no ack bit set for',
-      message,
-      'setting ackNum to 0.',
-    )
+    console.warn('The ackNum > 0 (', ackNum, '), but there is no ack bit set for', message, 'setting ackNum to 0.')
     ackNumToSend = 0
   }
 
   // Check that the ackNum length is of the correct size, it's a 3bit int.
   if (ackNum < 0 || ackNum > ACK_NUM.MAX) {
-    throw new TypeError(
-      `eUI ackNums must be between 0 and ${ACK_NUM.MAX} (inclusive).`,
-    )
+    throw new TypeError(`AckNums must be between 0 and ${ACK_NUM.MAX} (inclusive).`)
   }
 
   // Check that the payload is a bufer at this stage
@@ -149,8 +135,7 @@ export function encode(message: Message): Buffer {
   const checksumBuffer = crc.readBuffer()
 
   // Calculate the full packet length so it can be allocated in one go
-  const packetLength =
-    (offset !== null ? 7 : 5) + messageIDLength + payloadLength
+  const packetLength = (offset !== null ? 7 : 5) + messageIDLength + payloadLength
 
   // Generate the packet
   const packetArray = [
@@ -163,11 +148,7 @@ export function encode(message: Message): Buffer {
   ]
 
   const packet = Buffer.concat(packetArray, packetLength)
-  debug(
-    `Encoded message is ${packet.toString(
-      'hex',
-    )} with payload length ${payloadLength}`,
-  )
+  debug(`Encoded message is ${packet.toString('hex')} with payload length ${payloadLength}`)
 
   return packet
 }
