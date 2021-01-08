@@ -147,7 +147,7 @@ export class BinaryProtocolDecoder {
   step = (b: number, statusContext: StatusContext) => {
     switch (this.state) {
       case STATE.AWAITING_HEADER:
-        d(`Received header byte #${this.headerCounter}: ${Buffer.from([b]).toString('hex')}`)
+        d(`Received header byte #${this.headerCounter}: ${b.toString(16)}`)
         // set the header buffer byte at the right indice to the byte we just received
         this.headerBuffer[this.headerCounter] = b
 
@@ -198,11 +198,7 @@ export class BinaryProtocolDecoder {
         this.headerCounter++
         break
       case STATE.AWAITING_MESSAGEID:
-        d(
-          `Received messageID byte #${this.messageIDCounter + 1}/${this.expectedMessageIDLen}: ${Buffer.from([
-            b,
-          ]).toString('hex')}`,
-        )
+        d(`Received messageID byte #${this.messageIDCounter + 1}/${this.expectedMessageIDLen}: ${b.toString(16)}`)
 
         // set the messageID buffer byte at the right indice to the byte we just received
         this.messageIDBuffer[this.messageIDCounter] = b
@@ -243,12 +239,12 @@ export class BinaryProtocolDecoder {
         this.crc.step(b)
 
         if (this.offsetCounter === 0) {
-          d(`Consuming the first offset byte: ${Buffer.from([b]).toString('hex')}`)
+          d(`Consuming the first offset byte: ${b.toString(16)}`)
           // merge in the first byte
 
           this.offsetUInt16Array[0] |= b
         } else if (this.offsetCounter === 1) {
-          d(`Consuming the second offset byte: ${Buffer.from([b]).toString('hex')}`)
+          d(`Consuming the second offset byte: ${b.toString(16)}`)
 
           // bitshift and merge in the second byte
           this.offsetUInt16Array[0] |= b << 8
@@ -271,11 +267,7 @@ export class BinaryProtocolDecoder {
         this.offsetCounter++
         break
       case STATE.AWAITING_PAYLOAD:
-        d(
-          `Received payload byte #${this.payloadCounter + 1}/${this.expectedPayloadLength}: ${Buffer.from([b]).toString(
-            'hex',
-          )}`,
-        )
+        d(`Received payload byte #${this.payloadCounter + 1}/${this.expectedPayloadLength}: ${b.toString(16)}`)
 
         // set the payload buffer byte at the right indice to the byte we just received
         this.payloadBuffer![this.payloadCounter] = b
@@ -300,12 +292,12 @@ export class BinaryProtocolDecoder {
         break
       case STATE.AWAITING_CHECKSUM:
         if (this.checksumCounter === 0) {
-          d(`Consuming the first checksum byte: ${Buffer.from([b]).toString('hex')}`)
+          d(`Consuming the first checksum byte: ${b.toString(16)}`)
 
           // merge in the first byte
           this.checksumUInt16Array[0] |= b
         } else if (this.checksumCounter === 1) {
-          d(`Consuming the second checksum byte: ${Buffer.from([b]).toString('hex')}`)
+          d(`Consuming the second checksum byte: ${b.toString(16)}`)
 
           // bitshift and merge in the second byte
           this.checksumUInt16Array[0] |= b << 8
