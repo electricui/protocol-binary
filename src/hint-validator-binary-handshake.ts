@@ -10,9 +10,7 @@ import {
 import { MESSAGEIDS, TYPES } from '@electricui/protocol-binary-constants'
 import { mark, measure } from './perf'
 
-const dBinaryHandshake = require('debug')(
-  'electricui-protocol-binary:hint-validator-handshake',
-)
+const dBinaryHandshake = require('debug')('electricui-protocol-binary:hint-validator-handshake')
 
 interface HintValidatorBinaryHandshakeOptions {
   /**
@@ -44,9 +42,7 @@ interface FauxSerialTransport extends Transport {
   comPath: string
 }
 
-function isSerialTransport(
-  transport: Transport | FauxSerialTransport,
-): transport is FauxSerialTransport {
+function isSerialTransport(transport: Transport | FauxSerialTransport): transport is FauxSerialTransport {
   if ((transport as FauxSerialTransport).isSerialTransport) {
     return true
   }
@@ -69,8 +65,7 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
   ) {
     super(hint, connection, cancellationToken)
 
-    this.treatAllSerialDevicesAsSeparate =
-      options.treatAllSerialDevicesAsSeparate ?? false
+    this.treatAllSerialDevicesAsSeparate = options.treatAllSerialDevicesAsSeparate ?? false
 
     this.lastAttemptTimeout = options.lastAttemptTimeout ?? 1000
 
@@ -93,25 +88,19 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     return true
   }
 
-  sendAttempt = async (
-    attemptIndex: number,
-    cancellationToken: CancellationToken,
-  ) => {
+  sendAttempt = async (attemptIndex: number, cancellationToken: CancellationToken) => {
     mark(`binary-validator:attempt-${attemptIndex}`)
     dBinaryHandshake(`Sending search attempt #${this.attemptIndex} `)
 
     // Setup the waitForReply handler
-    const waitForReply = this.connection.waitForReply<number>(
-      (replyMessage: Message) => {
-        // Hint validator binary handshake attempt
-        return (
-          replyMessage.messageID === MESSAGEIDS.BOARD_IDENTIFIER &&
-          replyMessage.metadata.internal === true &&
-          replyMessage.metadata.query === false
-        )
-      },
-      cancellationToken,
-    )
+    const waitForReply = this.connection.waitForReply<number>((replyMessage: Message) => {
+      // Hint validator binary handshake attempt
+      return (
+        replyMessage.messageID === MESSAGEIDS.BOARD_IDENTIFIER &&
+        replyMessage.metadata.internal === true &&
+        replyMessage.metadata.query === false
+      )
+    }, cancellationToken)
 
     // Add the cancellation handler to our list
     this.waitForReplyCancellationHandlers.push(cancellationToken.cancel)
@@ -126,16 +115,14 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
 
     const caughtWaitForReplyPromise = waitForReply.catch(e => {
       dBinaryHandshake(`Hint Validator waitForReply ${attemptIndex} timed out`)
-      return null
+      return
     })
 
-    const caughtConnectionWriteAttempt = this.connection
-      .write(requestBoardIDMessage, cancellationToken)
-      .catch(e => {
-        dBinaryHandshake(`Hint Validator write ${attemptIndex} failed`)
-        dBinaryHandshake(e)
-        return null
-      })
+    const caughtConnectionWriteAttempt = this.connection.write(requestBoardIDMessage, cancellationToken).catch(e => {
+      dBinaryHandshake(`Hint Validator write ${attemptIndex} failed`)
+      dBinaryHandshake(e)
+      return
+    })
 
     mark(`binary-validator:attempt-${attemptIndex}:write`)
     await caughtConnectionWriteAttempt
@@ -152,6 +139,8 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     }
 
     dBinaryHandshake(`Binary hint validator attempt ${attemptIndex} failed`)
+
+    return
   }
 
   receivedBoardID = (boardID: number, attemptIndex: number) => {
@@ -199,52 +188,37 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
 
   async startValidation() {
     dBinaryHandshake(
-      `Starting binary handshake over ${this.connection.getHash()}, starting at attemptIndex ${
-        this.attemptIndex
-      }`,
+      `Starting binary handshake over ${this.connection.getHash()}, starting at attemptIndex ${this.attemptIndex}`,
     )
 
     // Loop through our attempts and send them off at the correct times.
 
-    // Wait the appropriate amount of time for the first attempt
-
-    // wait the delay prescribed
-    await new Promise((resolve, reject) =>
-      setTimeout(resolve, this.attemptTiming[this.attemptIndex]),
-    )
-
     // While LESS THAN the COUNT => while the ID will be valid
-    while (
-      this.attemptIndex < this.attemptTiming.length &&
-      !this.hasReceivedBoardID
-    ) {
+    while (this.attemptIndex < this.attemptTiming.length && !this.hasReceivedBoardID) {
+      // make an attempt
+      dBinaryHandshake(`Delaying attempt #${this.attemptIndex} by ${this.attemptTiming[this.attemptIndex]}ms`)
+
+      if (this.attemptTiming[this.attemptIndex] > 0) {
+        await new Promise((resolve, reject) => setTimeout(resolve, this.attemptTiming[this.attemptIndex]))
+      }
+
       // Halt if the higher level token has been cancelled
       this.cancellationToken.haltIfCancelled()
 
       // make an attempt
-      dBinaryHandshake(
-        `Delaying attempt #${this.attemptIndex} by ${
-          this.attemptTiming[this.attemptIndex]
-        }ms`,
-      )
+      dBinaryHandshake(`Delaying attempt #${this.attemptIndex} by ${this.attemptTiming[this.attemptIndex]}ms`)
 
       // If we've received it in the meantime, bail
       if (this.hasReceivedBoardID) {
-        dBinaryHandshake(
-          'hasReceivedBoardID went true while waiting to send next search packet',
-        )
+        dBinaryHandshake('hasReceivedBoardID went true while waiting to send next search packet')
         return
       }
 
-      const cancellationToken = new CancellationToken(
-        'binary handshake attempt',
-      )
+      const cancellationToken = new CancellationToken('binary handshake attempt')
 
       // Give up once we need to send the next one.
       // If there is no next one, give up after the last attempt timeout time.
-      cancellationToken.deadline(
-        this.attemptTiming[this.attemptIndex + 1] ?? this.lastAttemptTimeout,
-      )
+      cancellationToken.deadline(this.attemptTiming[this.attemptIndex + 1] ?? this.lastAttemptTimeout)
 
       try {
         await this.sendAttempt(this.attemptIndex, cancellationToken)
@@ -259,7 +233,9 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
       this.attemptIndex++
     }
 
-    dBinaryHandshake('Exhausted validator attempts, giving up.')
+    if (!this.hasReceivedBoardID) {
+      dBinaryHandshake('Exhausted validator attempts, giving up.')
+    }
     this.complete()
   }
 }
