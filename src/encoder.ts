@@ -6,6 +6,8 @@ import { CRC16 } from '@electricui/utility-crc16'
 
 const debug = require('debug')('electricui-protocol-binary:encoder')
 
+const crc = new CRC16()
+
 /**
  * Generates an Electric UI Binary Packet
  * @export
@@ -104,7 +106,7 @@ export function encode(message: Message): Buffer {
   const messageIDBuffer = Buffer.from(message.messageID)
 
   // generate the checksum
-  const crc = new CRC16()
+  crc.reset()
 
   // Remember the header uint16 is LE
   crc.step(payloadHeaderBuffer[0])
