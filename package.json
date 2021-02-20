@@ -1,6 +1,6 @@
 {
   "name": "@electricui/protocol-binary",
-  "version": "0.8.8-prerelease.0",
+  "version": "0.8.8-prerelease.1",
   "description": "ElectricUI Binary Protocol Parser",
   "electricui-dev": true,
   "author": "Electric UI <support@electricui.com> (https://electricui.com)",
