@@ -135,7 +135,7 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
 
       // Notify the device manager
       this.receivedBoardID(boardIDMessage.payload, attemptIndex)
-      return
+      return true
     }
 
     dBinaryHandshake(`Binary hint validator attempt ${attemptIndex} failed`)
