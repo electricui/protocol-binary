@@ -2,6 +2,7 @@ import {
   CancellationToken,
   Connection,
   DeviceCandidate,
+  DeviceID,
   DiscoveryHintValidator,
   Hint,
   Message,
@@ -171,7 +172,7 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
       }
     }
 
-    const candidate = new DeviceCandidate(boardIDString, this.connection)
+    const candidate = new DeviceCandidate(boardIDString as DeviceID, this.connection)
 
     this.pushDeviceCandidate(candidate, this.cancellationToken)
 

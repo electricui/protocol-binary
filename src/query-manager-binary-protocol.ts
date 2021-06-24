@@ -19,7 +19,7 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
     this.heartbeatMessageID = options.heartbeatMessageID || MESSAGEIDS.HEARTBEAT
   }
 
-  push(message: Message, cancellationToken: CancellationToken): PipelinePromise {
+  async push(message: Message, cancellationToken: CancellationToken): PipelinePromise {
     // if there's no query bit set, just send it blindly
     if (!message.metadata.query) {
       dQueryManager(`not a query: ${message.messageID}, sending blindly`)
@@ -70,14 +70,6 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
     })
 
     dQueryManager(`pushing query`)
-
-    // we require both a successful send and a successful ack
-    return Promise.all([queryPush, waitForReply]).then(result => {
-      const [queryResult, waitForReplyResult] = result
-
-      dQueryManager(`waitForReplyResult`, waitForReplyResult)
-
-      return waitForReplyResult
-    })
+    await Promise.all([queryPush, waitForReply])
   }
 }
