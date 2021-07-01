@@ -1,6 +1,7 @@
 import {} from '@electricui/build-rollup-config'
 
-import { CancellationToken, Message, Pipeline } from '@electricui/core'
+import { Message, Pipeline } from '@electricui/core'
+import { CancellationToken } from '@electricui/async-utilities'
 
 import { BinaryPipelineOptions } from './options'
 import { CRC16 } from '@electricui/utility-crc16'

@@ -1,4 +1,5 @@
-import { CancellationToken, Message, Pipeline } from '@electricui/core'
+import { Message, Pipeline } from '@electricui/core'
+import { CancellationToken } from '@electricui/async-utilities'
 
 import { ACK_NUM } from '@electricui/protocol-binary-constants'
 import { BinaryPipelineOptions } from './options'

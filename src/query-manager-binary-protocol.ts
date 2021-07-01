@@ -1,4 +1,5 @@
-import { CancellationToken, ConnectionInterface, Message, PipelinePromise, QueryManager } from '@electricui/core'
+import { ConnectionInterface, Message, PipelinePromise, QueryManager } from '@electricui/core'
+import { CancellationToken } from '@electricui/async-utilities'
 
 import { MESSAGEIDS } from '@electricui/protocol-binary-constants'
 import debug from 'debug'

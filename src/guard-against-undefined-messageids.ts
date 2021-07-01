@@ -1,4 +1,5 @@
-import { CancellationToken, DuplexPipeline, Message, Pipeline, TypeCache } from '@electricui/core'
+import { DuplexPipeline, Message, Pipeline, TypeCache } from '@electricui/core'
+import { CancellationToken } from '@electricui/async-utilities'
 
 /**
  * This pipeline throws errors or warns if a typecache doesn't contain type information for a messageID.

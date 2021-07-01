@@ -1,5 +1,4 @@
 import {
-  CancellationToken,
   Connection,
   DeviceCandidate,
   DeviceID,
@@ -10,7 +9,7 @@ import {
 } from '@electricui/core'
 import { MESSAGEIDS, TYPES } from '@electricui/protocol-binary-constants'
 import { mark, measure } from './perf'
-
+import { CancellationToken } from '@electricui/async-utilities'
 const dBinaryHandshake = require('debug')('electricui-protocol-binary:hint-validator-handshake')
 
 interface HintValidatorBinaryHandshakeOptions {

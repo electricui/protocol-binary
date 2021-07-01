@@ -1,4 +1,5 @@
-import { CancellationToken, ConnectionInterface, DeliverabilityManager, Message } from '@electricui/core'
+import { ConnectionInterface, DeliverabilityManager, Message } from '@electricui/core'
+import { CancellationToken } from '@electricui/async-utilities'
 
 import { MAX_ACK_NUM } from '@electricui/protocol-binary-constants'
 

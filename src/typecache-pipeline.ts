@@ -1,12 +1,6 @@
-import {
-  CancellationToken,
-  DuplexPipeline,
-  Message,
-  Pipeline,
-  TypeCache,
-} from '@electricui/core'
+import { DuplexPipeline, Message, Pipeline, TypeCache } from '@electricui/core'
 import { MESSAGEIDS, TYPES } from '@electricui/protocol-binary-constants'
-
+import { CancellationToken } from '@electricui/async-utilities'
 const internalTypes = {
   [MESSAGEIDS.LIBRARY_VERSION]: TYPES.UINT8,
   [MESSAGEIDS.BOARD_IDENTIFIER]: TYPES.UINT16,
@@ -42,10 +36,7 @@ class BinaryTypeCacheEncoderPipeline extends Pipeline {
       const internalMessageID = message.messageID as keyof typeof internalTypes
 
       if (typeof internalTypes[internalMessageID] === 'undefined') {
-        console.warn(
-          "Using an internal message that we don't know about",
-          message,
-        )
+        console.warn("Using an internal message that we don't know about", message)
         console.trace()
       } else if (internalTypes[internalMessageID] !== message.metadata.type) {
         // it's the wrong type and we know that

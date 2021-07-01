@@ -2,7 +2,8 @@ import * as chai from 'chai'
 import * as sinon from 'sinon'
 
 import { BinaryDecoderPipeline, BinaryProtocolDecoder } from '../src/decoder'
-import { CancellationToken, Message, Sink, Source, TypeCache } from '@electricui/core'
+import { Message, Sink, Source, TypeCache } from '@electricui/core'
+import { CancellationToken } from '@electricui/async-utilities'
 
 const assert = chai.assert
 
