@@ -1,4 +1,4 @@
-import { DiscoveryHintProducer, Hint } from '@electricui/core'
+import { CancellationToken, DiscoveryHintProducer, Hint } from '@electricui/core'
 
 export default class MockDiscoveryHintProducer extends DiscoveryHintProducer {
   emitCount: number
@@ -31,7 +31,7 @@ export default class MockDiscoveryHintProducer extends DiscoveryHintProducer {
 
       setTimeout(() => {
         if (this.polling) {
-          this.foundHint(hint)
+          this.foundHint(hint, new CancellationToken())
         }
         if (index === this.emitCount - 1) {
           this.stopPolling()

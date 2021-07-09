@@ -25,7 +25,7 @@ export default class MockTransport extends Transport {
   callback: Callback
 
   constructor(options: MockTransportOptions) {
-    super(options)
+    super()
     this.options = options
     this.callback = options.callback
 

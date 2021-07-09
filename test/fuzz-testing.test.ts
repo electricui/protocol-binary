@@ -1,10 +1,11 @@
 import * as chai from 'chai'
 import * as sinon from 'sinon'
+import { describe, expect, it, xit } from '@jest/globals'
 
-import { Message, Sink, Source, TypeCache } from '@electricui/core'
+import { CancellationToken, Message, Sink, Source, TypeCache } from '@electricui/core'
 
-import { BinaryProtocolDecoder } from '../src/decoder'
-import BinaryProtocolEncoder from '../src/encoder'
+import { BinaryDecoderPipeline } from '../src/decoder'
+import BinaryEncoderPipeline from '../src/encoder'
 import { pseudoRandomBytes } from 'crypto'
 import { random } from 'faker'
 
@@ -26,14 +27,13 @@ function roundTripFactory() {
   const spy = sinon.spy()
 
   const source = new Source()
-  const encoder = new BinaryProtocolEncoder()
-  const decoder = new BinaryProtocolDecoder()
+  const encoder = new BinaryEncoderPipeline()
+  const decoder = new BinaryDecoderPipeline()
   const sink = new TestSink(spy)
 
-  source
-    .pipe(encoder)
-    .pipe(decoder)
-    .pipe(sink)
+  decoder
+
+  source.pipe(encoder).pipe(decoder).pipe(sink)
 
   return {
     source,
@@ -72,11 +72,11 @@ describe('Binary Protocol Fuzz Testing', () => {
         timestamp: 0,
       }
 
-      if (message.payload !== null && message.payload.length === 0) {
-        message.payload = null
-      }
+      // if (message.payload !== null && message.payload.length === 0) {
+      //   message.payload = null
+      // }
 
-      await source.push(message)
+      await source.push(message, new CancellationToken())
 
       const result: Message<Buffer> = spy.getCall(payloadLength).args[0]
 

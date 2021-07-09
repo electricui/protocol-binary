@@ -1,5 +1,6 @@
 import * as chai from 'chai'
 import * as sinon from 'sinon'
+import { describe, expect, it, xit } from '@jest/globals'
 
 import {
   CancellationToken,
@@ -16,13 +17,14 @@ import {
   Source,
   Transport,
   TypeCache,
+  UsageRequest,
 } from '@electricui/core'
 
 import { BinaryProtocolDecoder } from '../src/decoder'
 import BinaryProtocolEncoder from '../src/encoder'
 import DeliverabilityManagerBinaryProtocol from '../src/deliverability-manager-binary-protocol'
 import MockTransport from './fixtures/mock-transport'
-import { expect } from 'chai'
+import exp from 'constants'
 
 const chaiAsPromised = require('chai-as-promised')
 chai.use(chaiAsPromised)
@@ -40,6 +42,8 @@ class TestSink extends Sink {
     return this.callback(chunk)
   }
 }
+
+const USAGE_REQUEST = 'test' as UsageRequest
 
 type fakeDevice = (message: Message) => Array<Message> | null
 
@@ -111,7 +115,7 @@ describe('Binary Protocol Deliverability Manager', () => {
 
     const cancellationToken = new CancellationToken()
 
-    await connection.addUsageRequest('test', cancellationToken)
+    await connection.addUsageRequest(USAGE_REQUEST, cancellationToken)
 
     const messageNoAck = new Message('noAck', 1)
     messageNoAck.metadata.ack = false
@@ -120,13 +124,9 @@ describe('Binary Protocol Deliverability Manager', () => {
 
     await noAckWrite
 
-    await connection.removeUsageRequest('test')
+    await connection.removeUsageRequest(USAGE_REQUEST)
 
-    assert.isTrue(messageNoAck.metadata.ackNum === 0, "The ack num was mutated when it shouldn't have been")
-
-    assert.isFulfilled(noAckWrite)
-
-    expect(
+    expect(messageNoAck.metadata.ackNum).toBe(0) // "The ack num was mutated when it shouldn't have been"
   })
 
   it('it mutates the ackNum when the ack bit is set', async () => {
@@ -145,20 +145,17 @@ describe('Binary Protocol Deliverability Manager', () => {
 
     const { receivedDataSpy, connection } = factory(device)
 
-    await connection.addUsageRequest('test', () => {})
+    await connection.addUsageRequest(USAGE_REQUEST, new CancellationToken())
 
     const messageAck = new Message('ack', 1)
     messageAck.metadata.ack = true
 
-    const noAckWrite = connection.write(messageAck)
+    const noAckWrite = connection.write(messageAck, new CancellationToken())
 
-    await connection.removeUsageRequest('test')
+    await connection.removeUsageRequest(USAGE_REQUEST)
 
-    assert.isTrue(messageAck.metadata.ackNum > 0, "The outgoing ack num wasn't mutated when it should have been")
-
-    assert.isTrue(ackNum > 0, "The device incoming ack number wasn't mutated when it should have been")
-
-    return assert.isFulfilled(noAckWrite)
+    expect(messageAck.metadata.ackNum).toBeGreaterThan(0) // The outgoing ack num wasn't mutated when it should have been
+    expect(ackNum).toBeGreaterThan(0) // The device incoming ack number wasn't mutated when it should have been
   })
 
   it('it rejects after the timeout when no reply is received', async () => {
@@ -169,21 +166,21 @@ describe('Binary Protocol Deliverability Manager', () => {
 
     const { receivedDataSpy, connection } = factory(device)
 
-    await connection.addUsageRequest('test', () => {})
+    await connection.addUsageRequest(USAGE_REQUEST, new CancellationToken())
 
     const messageAck = new Message('ack', 1)
     messageAck.metadata.ack = true
 
     let caught = false
 
-    const noAckWrite = connection.write(messageAck).catch(err => {
+    const noAckWrite = connection.write(messageAck, new CancellationToken()).catch(err => {
       // we expect this to happen
       caught = true
     })
 
     await noAckWrite
 
-    await connection.removeUsageRequest('test')
+    await connection.removeUsageRequest(USAGE_REQUEST)
 
     expect(caught).toBeTruthy()
     expect(noAckWrite).rejects
@@ -200,15 +197,15 @@ describe('Binary Protocol Deliverability Manager', () => {
 
     const { receivedDataSpy, connection } = factory(device)
 
-    await connection.addUsageRequest('test', () => {})
+    await connection.addUsageRequest(USAGE_REQUEST, new CancellationToken())
 
     const messageAck = new Message('ack', 1)
     messageAck.metadata.ack = true
 
-    const ackWrite = connection.write(messageAck)
+    const ackWrite = connection.write(messageAck, new CancellationToken())
 
     await ackWrite
-    await connection.removeUsageRequest('test')
+    await connection.removeUsageRequest(USAGE_REQUEST)
 
     expect(ackWrite).resolves
   })
@@ -228,16 +225,16 @@ describe('Binary Protocol Deliverability Manager', () => {
 
     const { receivedDataSpy, connection } = factory(device)
 
-    await connection.addUsageRequest('test', () => {})
+    await connection.addUsageRequest(USAGE_REQUEST, new CancellationToken())
 
     const messageAck = new Message('ack', 1)
     messageAck.metadata.ack = true
 
-    const ackWrite = connection.write(messageAck)
+    const ackWrite = connection.write(messageAck, new CancellationToken())
 
-    await connection.removeUsageRequest('test')
+    await connection.removeUsageRequest(USAGE_REQUEST)
 
-    return assert.isFulfilled(ackWrite)
+    await ackWrite
   })
 })
 

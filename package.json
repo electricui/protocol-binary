@@ -28,6 +28,7 @@
   "devDependencies": {
     "@electricui/build-rollup-config": "^0.8.0",
     "@electricui/jest-config": "^0.8.0",
+    "@jest/globals": "^26.6.2",
     "@sinonjs/fake-timers": "^6.0.1",
     "@types/bluebird": "^3.5.25",
     "@types/chai": "^4.1.7",

@@ -1,7 +1,8 @@
 import * as chai from 'chai'
 import * as sinon from 'sinon'
+import { describe, expect, it, xit } from '@jest/globals'
 
-import { Message, Sink, Source, TypeCache } from '@electricui/core'
+import { CancellationToken, Message, Sink, Source, TypeCache } from '@electricui/core'
 
 import BinaryProtocolEncoder from '../src/encoder'
 
@@ -28,7 +29,7 @@ function encodeWithPipeline(testCase: Message) {
 
   source.pipe(encoder).pipe(sink)
 
-  source.push(testCase)
+  source.push(testCase, new CancellationToken())
 
   return spy.getCall(0).args[0] as Buffer
 }
@@ -42,17 +43,7 @@ describe('BinaryProtocolEncoder', () => {
 
     const result = encodeWithPipeline(message)
 
-    const expected = Buffer.from([
-      0x01,
-      0x14,
-      0x03,
-      0x61,
-      0x62,
-      0x63,
-      0x2a,
-      0x64,
-      0xba,
-    ])
+    const expected = Buffer.from([0x01, 0x14, 0x03, 0x61, 0x62, 0x63, 0x2a, 0x64, 0xba])
 
     assert.deepEqual(result, expected)
   })

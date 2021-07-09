@@ -1,11 +1,14 @@
 import * as chai from 'chai'
 import * as sinon from 'sinon'
+import { describe, expect, it, xit } from '@jest/globals'
 
 import {
+  CancellationToken,
   Connection,
   ConnectionInterface,
   DeliverabilityManagerDumb,
   Device,
+  DeviceID,
   DeviceManager,
   DiscoveryHintConsumer,
   Hint,
@@ -31,49 +34,44 @@ chai.use(chaiAsPromised)
 
 const assert = chai.assert
 
-const mockTransportFactoryFactory = new TransportFactory(
-  (options: MockTransportOptions) => {
-    const connectionInterface = new ConnectionInterface()
+const mockTransportFactoryFactory = new TransportFactory((options: MockTransportOptions) => {
+  const connectionInterface = new ConnectionInterface()
 
-    let transport: Transport
+  let transport: Transport
 
-    const transportReceivedDataCallback = (message: Message) => {
-      const replies = options.receiveDataCallback(message)
+  const transportReceivedDataCallback = (message: Message) => {
+    const replies = options.receiveDataCallback(message)
 
-      if (replies !== null) {
-        // send the reply back up the pipeline asynchronously
+    if (replies !== null) {
+      // send the reply back up the pipeline asynchronously
 
-        for (const reply of replies) {
-          setImmediate(() => {
-            transport.readPipeline.push(reply)
-          })
-        }
+      for (const reply of replies) {
+        setImmediate(() => {
+          transport.readPipeline.push(reply, new CancellationToken())
+        })
       }
     }
+  }
 
-    transport = new MockTransport({
-      callback: transportReceivedDataCallback,
-    })
+  transport = new MockTransport({
+    callback: transportReceivedDataCallback,
+  })
 
-    connectionInterface.setTransport(transport)
+  connectionInterface.setTransport(transport)
 
-    const deliverabilityManger = new DeliverabilityManagerDumb(
-      connectionInterface,
-    )
+  const deliverabilityManger = new DeliverabilityManagerDumb(connectionInterface)
 
-    const queryManager = new QueryManagerBinaryProtocol({
-      connectionInterface,
-      timeout: 10, // 10ms timeouts
-    })
+  const queryManager = new QueryManagerBinaryProtocol({
+    connectionInterface,
+  })
 
-    connectionInterface.setDeliverabilityManager(deliverabilityManger)
-    connectionInterface.setQueryManager(queryManager)
+  connectionInterface.setDeliverabilityManager(deliverabilityManger)
+  connectionInterface.setQueryManager(queryManager)
 
-    connectionInterface.finalise()
+  connectionInterface.finalise()
 
-    return connectionInterface
-  },
-)
+  return connectionInterface
+})
 
 type fakeDevice = (message: Message) => Array<Message> | null
 
@@ -104,16 +102,13 @@ function factory(receiveDataCallback: fakeDevice) {
 
   deviceManager.addHintProducers([producer])
   deviceManager.addHintConsumers([consumer])
-  deviceManager.setCreateHintValidatorsCallback(
-    (hint: Hint, connection: Connection) => {
-      const validator = new HintValidatorBinaryHandshake(hint, connection, {
-        timeout: 500,
-        attemptTiming: [0, 1, 5, 100, 1000, 2000, 5000],
-      })
+  deviceManager.setCreateHintValidatorsCallback((hint: Hint, connection: Connection) => {
+    const validator = new HintValidatorBinaryHandshake(hint, connection, new CancellationToken(), {
+      attemptTiming: [0, 1, 5, 100, 1000, 2000, 5000],
+    })
 
-      return [validator]
-    },
-  )
+    return [validator]
+  })
 
   return deviceManager
 }
@@ -123,11 +118,7 @@ describe('Binary Protocol Hint Validator', () => {
     const device = (message: Message) => {
       const replies: Array<Message> = []
 
-      if (
-        message.metadata.internal &&
-        message.metadata.query &&
-        message.messageID === MESSAGEIDS.BOARD_IDENTIFIER
-      ) {
+      if (message.metadata.internal && message.metadata.query && message.messageID === MESSAGEIDS.BOARD_IDENTIFIER) {
         const boardID = new Message(MESSAGEIDS.BOARD_IDENTIFIER, 'fake-device')
         boardID.metadata.internal = true
 
@@ -139,11 +130,11 @@ describe('Binary Protocol Hint Validator', () => {
 
     const deviceManager = factory(device)
 
-    deviceManager.poll()
+    deviceManager.poll(new CancellationToken())
 
-    deviceManager.on(MANAGER_EVENTS.FOUND_DEVICE, (device: Device) => {
-      assert.strictEqual(device.deviceID, 'fake-device')
-      done()
+    deviceManager.on(MANAGER_EVENTS.FOUND_DEVICE, (deviceID: DeviceID) => {
+      assert.strictEqual(deviceID, 'fake-device')
+      done!()
     })
   }, 10_000)
   it('it resolves when the device replies after the 2nd request', done => {
@@ -152,11 +143,7 @@ describe('Binary Protocol Hint Validator', () => {
     const device = (message: Message) => {
       const replies: Array<Message> = []
 
-      if (
-        message.metadata.internal &&
-        message.metadata.query &&
-        message.messageID === MESSAGEIDS.BOARD_IDENTIFIER
-      ) {
+      if (message.metadata.internal && message.metadata.query && message.messageID === MESSAGEIDS.BOARD_IDENTIFIER) {
         attemptNum++
         const boardID = new Message(MESSAGEIDS.BOARD_IDENTIFIER, 'fake-device')
         boardID.metadata.internal = true
@@ -171,84 +158,12 @@ describe('Binary Protocol Hint Validator', () => {
 
     const deviceManager = factory(device)
 
-    deviceManager.poll()
+    deviceManager.poll(new CancellationToken())
 
-    deviceManager.on(MANAGER_EVENTS.FOUND_DEVICE, (device: Device) => {
-      assert.strictEqual(device.deviceID, 'fake-device')
-      done()
+    deviceManager.on(MANAGER_EVENTS.FOUND_DEVICE, (deviceID: DeviceID) => {
+      assert.strictEqual(deviceID, 'fake-device')
+      done!()
     })
-  }, 10_000)
-  it('it resolves when device only responds after 1 second', done => {
-    let startTime = new Date().getTime()
-
-    const device = (message: Message) => {
-      const replies: Array<Message> = []
-
-      if (
-        message.metadata.internal &&
-        message.metadata.query &&
-        message.messageID === MESSAGEIDS.BOARD_IDENTIFIER
-      ) {
-        const boardID = new Message(MESSAGEIDS.BOARD_IDENTIFIER, 'fake-device')
-        boardID.metadata.internal = true
-
-        if (new Date().getTime() > startTime + 1000) {
-          replies.push(boardID)
-        }
-      }
-
-      return replies
-    }
-
-    const deviceManager = factory(device)
-
-    deviceManager.poll()
-
-    deviceManager.on(MANAGER_EVENTS.FOUND_DEVICE, (device: Device) => {
-      assert.strictEqual(device.deviceID, 'fake-device')
-      done()
-    })
-  }, 10_000)
-  it("it doesn't resolve when the device replies after the timeout", done => {
-    let startTime = new Date().getTime()
-
-    const delayTime = 5000
-
-    const device = (message: Message) => {
-      const replies: Array<Message> = []
-
-      if (
-        message.metadata.internal &&
-        message.metadata.query &&
-        message.messageID === MESSAGEIDS.BOARD_IDENTIFIER
-      ) {
-        const boardID = new Message(MESSAGEIDS.BOARD_IDENTIFIER, 'fake-device')
-        boardID.metadata.internal = true
-
-        if (new Date().getTime() > startTime + delayTime) {
-          replies.push(boardID)
-        }
-      }
-
-      return replies
-    }
-
-    const deviceManager = factory(device)
-
-    deviceManager.poll()
-
-    let found = false
-
-    deviceManager.on(MANAGER_EVENTS.FOUND_DEVICE, (device: Device) => {
-      found = true
-      throw new Error('It found a device after the timeout')
-    })
-
-    setTimeout(() => {
-      assert.isFalse(found)
-
-      done()
-    }, delayTime + 1000)
   }, 10_000)
 })
 
