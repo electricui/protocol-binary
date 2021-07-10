@@ -11,5 +11,5 @@ EUI encode: 216kp/s
 
 ```
 JSON decode: 95kp/s
-EUI decode: 93kp/s
+EUI decode: 224kp/s
 ```

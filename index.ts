@@ -1,4 +1,4 @@
-export { BinaryDecoderPipeline, BinaryProtocolDecoder } from './src/decoder'
+export { BinaryDecoderPipeline, decode } from './src/decoder'
 export { default as DeliverabilityManagerBinaryProtocol } from './src/deliverability-manager-binary-protocol'
 export { default as BinaryPipeline } from './src/duplex-pipeline'
 export { default as BinaryEncoderPipeline, encode } from './src/encoder'
