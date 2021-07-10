@@ -4,4 +4,12 @@ This is the electricui binary protocol.
 
 # Benchmarks
 
-Can currently encode around 150k packets per second
+```
+JSON encode: 53kp/s
+EUI encode: 216kp/s
+```
+
+```
+JSON decode: 95kp/s
+EUI decode: 93kp/s
+```
