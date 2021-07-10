@@ -12,11 +12,11 @@ import { debug as d } from 'debug'
 const debugReal = d('electricui-protocol-binary:decoder')
 
 const debug = (generate: () => string) => {
-  // if (__DEV__) {
-  //   if (d.enabled('electricui-protocol-binary:decoder')) {
-  //     debugReal(generate())
-  //   }
-  // }
+  if (__DEV__) {
+    if (d.enabled('electricui-protocol-binary:decoder')) {
+      debugReal(generate())
+    }
+  }
 }
 
 const crc = new CRC16()
@@ -88,6 +88,8 @@ export function decode(packet: Buffer) {
     ackNum: ackNum,
     timestamp: 0,
   }
+
+  debug(() => `Decoded message ${messageID}`)
 
   return message
 }
