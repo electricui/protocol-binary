@@ -62,7 +62,7 @@
   "scripts": {
     "prepack": "silversmith prepack",
     "postpack": "silversmith postpack",
-    "benchmark": "node benchmarks/encode.js",
+    "bench": "ts-node ./benchmark/bench.ts",
     "build": "rm -rf ./lib && rollup -c",
     "test": "jest",
     "watch": "jest --watch",

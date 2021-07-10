@@ -6,10 +6,18 @@ import { CancellationToken } from '@electricui/async-utilities'
 import { BinaryPipelineOptions } from './options'
 import { CRC16 } from '@electricui/utility-crc16'
 import ERRORS from './errors'
-import debug from 'debug'
 import { timing } from '@electricui/timing'
+import { debug as d } from 'debug'
 
-const d = debug('electricui-protocol-binary:decoder')
+const debugReal = d('electricui-protocol-binary:decoder')
+
+const debug = (generate: () => string) => {
+  // if (__DEV__) {
+  //   if (d.enabled('electricui-protocol-binary:decoder')) {
+  //     debugReal(generate())
+  //   }
+  // }
+}
 
 interface PartialPacket {
   messageID: string
@@ -123,7 +131,7 @@ export class BinaryProtocolDecoder {
    * Push object packets up the abstraction and reset the state machine.
    */
   cycle = () => {
-    d(`Cycling State Machine`, this.packet.messageID, ': ', this.packet.payload)
+    debug(() => `Cycling State Machine ${this.packet.messageID}: ${this.packet.payload}`)
 
     const message = new Message(this.packet.messageID, this.packet.payload)
 
@@ -148,7 +156,7 @@ export class BinaryProtocolDecoder {
   step = (b: number, statusContext: StatusContext) => {
     switch (this.state) {
       case STATE.AWAITING_HEADER:
-        d(`Received header byte #${this.headerCounter}: ${b.toString(16)}`)
+        debug(() => `Received header byte #${this.headerCounter}: ${b.toString(16)}`)
         // set the header buffer byte at the right indice to the byte we just received
         this.headerBuffer[this.headerCounter] = b
 
@@ -157,7 +165,7 @@ export class BinaryProtocolDecoder {
 
         // if that was the third byte, parse the header
         if (this.headerCounter === 2) {
-          d('Parsing header')
+          debug(() => 'Parsing header')
 
           // extract the uint16 from the first two bytes of the header
           this.payloadHeader[0] |= this.headerBuffer[0]
@@ -172,18 +180,18 @@ export class BinaryProtocolDecoder {
           // allocate buffer for the payloadLength
           this.payloadBuffer = Buffer.alloc(this.expectedPayloadLength)
 
-          d(`\t expectedPayloadLength: ${this.expectedPayloadLength}`)
-          d(`\t type: ${this.packet.type}`)
-          d(`\t internal: ${this.packet.internal}`)
-          d(`\t offset: ${this.messageContainsOffset}`)
+          debug(() => `\t expectedPayloadLength: ${this.expectedPayloadLength}`)
+          debug(() => `\t type: ${this.packet.type}`)
+          debug(() => `\t internal: ${this.packet.internal}`)
+          debug(() => `\t offset: ${this.messageContainsOffset}`)
 
           this.expectedMessageIDLen = this.headerBuffer[2] & 0x0f // prettier-ignore
           this.packet.query = (this.headerBuffer[2] & 0x10) === 0x10 // prettier-ignore
           this.packet.ackNum = this.headerBuffer[2] >>> 5 // prettier-ignore
 
-          d(`\t expectedMessageIDLen: ${this.expectedMessageIDLen}`)
-          d(`\t query: ${this.packet.query}`)
-          d(`\t ackNum: ${this.packet.ackNum}`)
+          debug(() => `\t expectedMessageIDLen: ${this.expectedMessageIDLen}`)
+          debug(() => `\t query: ${this.packet.query}`)
+          debug(() => `\t ackNum: ${this.packet.ackNum}`)
 
           // if the payload is 0 length, it will remain the default, which is null
           // if (this.expectedPayloadLength === 0) {
@@ -199,7 +207,9 @@ export class BinaryProtocolDecoder {
         this.headerCounter++
         break
       case STATE.AWAITING_MESSAGEID:
-        d(`Received messageID byte #${this.messageIDCounter + 1}/${this.expectedMessageIDLen}: ${b.toString(16)}`)
+        debug(
+          () => `Received messageID byte #${this.messageIDCounter + 1}/${this.expectedMessageIDLen}: ${b.toString(16)}`,
+        )
 
         // set the messageID buffer byte at the right indice to the byte we just received
         this.messageIDBuffer[this.messageIDCounter] = b
@@ -217,7 +227,7 @@ export class BinaryProtocolDecoder {
           // Only convert the part of the string that's expected, ignore the rest of the buffer
           this.packet.messageID = this.messageIDBuffer.toString('utf8', 0, this.expectedMessageIDLen)
 
-          d(`\t messageID: ${this.packet.messageID}`)
+          debug(() => `\t messageID: ${this.packet.messageID}`)
 
           // depending on the offset header bit we'll be expecting the offset
           // next or the payload
@@ -240,12 +250,12 @@ export class BinaryProtocolDecoder {
         this.crc.step(b)
 
         if (this.offsetCounter === 0) {
-          d(`Consuming the first offset byte: ${b.toString(16)}`)
+          debug(() => `Consuming the first offset byte: ${b.toString(16)}`)
           // merge in the first byte
 
           this.offsetUInt16Array[0] |= b
         } else if (this.offsetCounter === 1) {
-          d(`Consuming the second offset byte: ${b.toString(16)}`)
+          debug(() => `Consuming the second offset byte: ${b.toString(16)}`)
 
           // bitshift and merge in the second byte
           this.offsetUInt16Array[0] |= b << 8
@@ -253,7 +263,7 @@ export class BinaryProtocolDecoder {
           // convert to a regular number and override the boolean
           this.packet.offset = this.offsetUInt16Array[0]
 
-          d(`\t offset: ${this.packet.offset}`)
+          debug(() => `\t offset: ${this.packet.offset}`)
 
           // next bytes will be payload data if there is a payload
           if (this.expectedPayloadLength > 0) {
@@ -268,7 +278,9 @@ export class BinaryProtocolDecoder {
         this.offsetCounter++
         break
       case STATE.AWAITING_PAYLOAD:
-        d(`Received payload byte #${this.payloadCounter + 1}/${this.expectedPayloadLength}: ${b.toString(16)}`)
+        debug(
+          () => `Received payload byte #${this.payloadCounter + 1}/${this.expectedPayloadLength}: ${b.toString(16)}`,
+        )
 
         // set the payload buffer byte at the right indice to the byte we just received
         this.payloadBuffer![this.payloadCounter] = b
@@ -281,7 +293,7 @@ export class BinaryProtocolDecoder {
           // Transfer the payload buffer into the payload property
           this.packet.payload = this.payloadBuffer!
 
-          d(`\t payload: ${this.packet.payload.toString('hex')}`)
+          debug(() => `\t payload: ${this.packet.payload.toString('hex')}`)
 
           // next is the checksum
           this.state = STATE.AWAITING_CHECKSUM
@@ -293,12 +305,12 @@ export class BinaryProtocolDecoder {
         break
       case STATE.AWAITING_CHECKSUM:
         if (this.checksumCounter === 0) {
-          d(`Consuming the first checksum byte: ${b.toString(16)}`)
+          debug(() => `Consuming the first checksum byte: ${b.toString(16)}`)
 
           // merge in the first byte
           this.checksumUInt16Array[0] |= b
         } else if (this.checksumCounter === 1) {
-          d(`Consuming the second checksum byte: ${b.toString(16)}`)
+          debug(() => `Consuming the second checksum byte: ${b.toString(16)}`)
 
           // bitshift and merge in the second byte
           this.checksumUInt16Array[0] |= b << 8
@@ -306,8 +318,8 @@ export class BinaryProtocolDecoder {
           // calculate the checksum, it will be cleared by the reset function later
           const calculatedChecksum = this.crc.read()
 
-          d(`\t checksum reported: ${this.checksumUInt16Array[0]}`)
-          d(`\t checksum expected: ${calculatedChecksum}`)
+          debug(() => `\t checksum reported: ${this.checksumUInt16Array[0]}`)
+          debug(() => `\t checksum expected: ${calculatedChecksum}`)
 
           // check that the checksum matches
           if (calculatedChecksum !== this.checksumUInt16Array[0]) {
@@ -372,7 +384,7 @@ export class BinaryDecoderPipeline extends Pipeline {
     }
 
     // otherwise we consumed some garbage
-    d('Garbage packet received', packet)
+    debug(() => `Garbage packet received ${packet}`)
 
     // Reject back down the chain to the transport
     return Promise.reject(packet)

@@ -40,6 +40,7 @@ function roundTripFactory() {
     spy,
   }
 }
+
 const alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 const randomMessageID = (length: number) => {
   return Array(length)
@@ -71,10 +72,6 @@ describe('Binary Protocol Fuzz Testing', () => {
         ackNum: isAck ? random.arrayElement([1, 2]) : 0,
         timestamp: 0,
       }
-
-      // if (message.payload !== null && message.payload.length === 0) {
-      //   message.payload = null
-      // }
 
       await source.push(message, new CancellationToken())
 

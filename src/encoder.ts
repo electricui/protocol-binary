@@ -4,8 +4,17 @@ import { CancellationToken } from '@electricui/async-utilities'
 import { ACK_NUM } from '@electricui/protocol-binary-constants'
 import { BinaryPipelineOptions } from './options'
 import { CRC16 } from '@electricui/utility-crc16'
+import { debug as d } from 'debug'
 
-const debug = require('debug')('electricui-protocol-binary:encoder')
+const debugReal = d('electricui-protocol-binary:encoder')
+
+const debug = (generate: () => string) => {
+  // if (__DEV__) {
+  //   if (d.enabled('electricui-protocol-binary:encoder')) {
+  //     debugReal(generate())
+  //   }
+  // }
+}
 
 const crc = new CRC16()
 
@@ -21,18 +30,18 @@ export function encode(message: Message): Buffer {
   // destructure them out
   const { type, internal, query, offset, ackNum, ack } = message.metadata
 
-  debug(`Encoding `, message.messageID, JSON.stringify(message))
+  debug(() => `Encoding ${message.messageID}, ${JSON.stringify(message)}`)
 
   // Check that the type is of the correct size, it's a 4 bit int.
   if (type < 0 || type > 15) {
     throw new TypeError('Packet type must have a value between 0 and 15 (inclusive)')
   }
 
-  let offsetBuffer = null
+  let offsetBuffer: Buffer | null = null
 
   // offset will either be a number, or null.
   if (offset !== null) {
-    debug(`Offset value is ${offset}`)
+    debug(() => `Offset value is ${offset}`)
 
     // Check that the offset length is of the correct size, it's a 16bit int.
     if (offset < 0 || offset > 65535) {
@@ -41,7 +50,7 @@ export function encode(message: Message): Buffer {
 
     offsetBuffer = Buffer.from(Uint16Array.from([offset]).buffer)
 
-    debug(`Offset Buffer is ${offsetBuffer.toString('hex')}`)
+    debug(() => `Offset Buffer is ${offsetBuffer!.toString('hex')}`)
   }
 
   const messageIDLength = message.messageID.length
@@ -151,7 +160,7 @@ export function encode(message: Message): Buffer {
   ]
 
   const packet = Buffer.concat(packetArray, packetLength)
-  debug(`Encoded message is ${packet.toString('hex')} with payload length ${payloadLength}`)
+  debug(() => `Encoded message is ${packet.toString('hex')} with payload length ${payloadLength}`)
 
   return packet
 }
