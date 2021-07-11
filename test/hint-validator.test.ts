@@ -1,28 +1,21 @@
 import * as chai from 'chai'
-import * as sinon from 'sinon'
-import { describe, expect, it, xit } from '@jest/globals'
+import { describe, it } from '@jest/globals'
 
 import {
   CancellationToken,
   Connection,
   ConnectionInterface,
   DeliverabilityManagerDumb,
-  Device,
   DeviceID,
   DeviceManager,
   DiscoveryHintConsumer,
   Hint,
   MANAGER_EVENTS,
   Message,
-  QueryManager,
-  QueryManagerNone,
-  Sink,
-  Source,
   Transport,
   TransportFactory,
-  TypeCache,
 } from '@electricui/core'
-import { MESSAGEIDS, TYPES } from '@electricui/protocol-binary-constants'
+import { MESSAGEIDS } from '@electricui/protocol-binary-constants'
 import MockTransport, { MockTransportOptions } from './fixtures/mock-transport'
 
 import HintValidatorBinaryHandshake from '../src/hint-validator-binary-handshake'

@@ -1,21 +1,16 @@
 import * as chai from 'chai'
 import * as sinon from 'sinon'
-import { describe, expect, it, xit } from '@jest/globals'
+import { describe, it } from '@jest/globals'
 
 import {
   CancellationToken,
   Connection,
   ConnectionInterface,
   DeliverabilityManagerDumb,
-  Device,
   DeviceManager,
   Hint,
   Message,
-  QueryManager,
-  Sink,
-  Source,
   Transport,
-  TypeCache,
   UsageRequest,
 } from '@electricui/core'
 

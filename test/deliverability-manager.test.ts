@@ -6,25 +6,16 @@ import {
   CancellationToken,
   Connection,
   ConnectionInterface,
-  DeliverabilityManagerDumb,
-  Device,
-  DeviceManager,
   Hint,
   Message,
-  QueryManager,
   QueryManagerNone,
   Sink,
-  Source,
   Transport,
-  TypeCache,
   UsageRequest,
 } from '@electricui/core'
 
-import { BinaryProtocolDecoder } from '../src/decoder'
-import BinaryProtocolEncoder from '../src/encoder'
 import DeliverabilityManagerBinaryProtocol from '../src/deliverability-manager-binary-protocol'
 import MockTransport from './fixtures/mock-transport'
-import exp from 'constants'
 
 const chaiAsPromised = require('chai-as-promised')
 chai.use(chaiAsPromised)

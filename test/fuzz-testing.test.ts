@@ -2,7 +2,7 @@ import * as chai from 'chai'
 import * as sinon from 'sinon'
 import { describe, expect, it, xit } from '@jest/globals'
 
-import { CancellationToken, Message, Sink, Source, TypeCache } from '@electricui/core'
+import { CancellationToken, Message, Sink, Source } from '@electricui/core'
 
 import { BinaryDecoderPipeline } from '../src/decoder'
 import BinaryEncoderPipeline from '../src/encoder'
