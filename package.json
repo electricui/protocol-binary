@@ -18,16 +18,16 @@
     "manifest.json"
   ],
   "dependencies": {
-    "@electricui/async-utilities": "^0.8.8",
-    "@electricui/core": "^0.8.9",
-    "@electricui/protocol-binary-constants": "^0.8.0",
-    "@electricui/timing": "^0.8.0",
-    "@electricui/utility-crc16": "^0.8.6",
+    "@electricui/async-utilities": "workspace:*",
+    "@electricui/core": "workspace:*",
+    "@electricui/protocol-binary-constants": "workspace:*",
+    "@electricui/timing": "workspace:*",
+    "@electricui/utility-crc16": "workspace:*",
     "debug": "^4.3.1"
   },
   "devDependencies": {
-    "@electricui/build-rollup-config": "^0.8.0",
-    "@electricui/jest-config": "^0.8.0",
+    "@electricui/build-rollup-config": "workspace:*",
+    "@electricui/jest-config": "workspace:*",
     "@jest/globals": "^26.6.2",
     "@sinonjs/fake-timers": "^6.0.1",
     "@types/bluebird": "^3.5.25",
