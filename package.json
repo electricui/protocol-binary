@@ -52,7 +52,7 @@
     "nyc": "^13.3.0",
     "performance-now": "^2.1.0",
     "rollup": "2.51.2",
-    "serialport": "9.0.0",
+    "serialport": "9.2.0",
     "sinon": "^7.2.3",
     "ts-jest": "^26.4.4",
     "ts-node": "^9.0.0",
