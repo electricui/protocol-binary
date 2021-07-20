@@ -2,7 +2,7 @@
   "compilerOptions": {
     "module": "CommonJS",
     "esModuleInterop": true,
-    "target": "es2020",
+    "target": "es2018",
     "noImplicitAny": true,
     "strictNullChecks": true,
     "strictPropertyInitialization": true,
