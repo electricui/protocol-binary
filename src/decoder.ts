@@ -1,5 +1,3 @@
-import {} from '@electricui/build-rollup-config'
-
 import { Message, Pipeline } from '@electricui/core'
 import { CancellationToken } from '@electricui/async-utilities'
 
@@ -12,7 +10,7 @@ import { debug as d } from 'debug'
 const debugReal = d('electricui-protocol-binary:decoder')
 
 const debug = (generate: () => string) => {
-  if (__DEV__) {
+  if (process.env.NODE_ENV !== 'production') {
     if (d.enabled('electricui-protocol-binary:decoder')) {
       debugReal(generate())
     }
