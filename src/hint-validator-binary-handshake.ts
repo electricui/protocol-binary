@@ -39,7 +39,7 @@ interface HintValidatorBinaryHandshakeOptions {
  */
 interface FauxSerialTransport extends Transport {
   isSerialTransport: true
-  comPath: string
+  path: string
 }
 
 function isSerialTransport(transport: Transport | FauxSerialTransport): transport is FauxSerialTransport {
@@ -167,7 +167,7 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
       const transport = this.connection.connectionInterface.transport! as Transport | FauxSerialTransport // prettier-ignore
 
       if (isSerialTransport(transport)) {
-        boardIDString = `${boardIDString}:${transport.comPath}`
+        boardIDString = `${boardIDString}:${transport.path}`
       }
     }
 
