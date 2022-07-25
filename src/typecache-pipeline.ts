@@ -22,13 +22,15 @@ class BinaryTypeCacheEncoderPipeline extends Pipeline {
   }
 
   receive(message: Message, cancellationToken: CancellationToken) {
-    // if it's a developer namespaced packet we check the type cache for a type
-    // and mutate the packet before encoding it
+    // If it's a developer namespaced packet of type 'unknown' we check the type cache for a type
+    // and mutate the packet before encoding it.
     if (message.metadata.internal === false) {
-      const cachedTypeData = this.typeCache.get(message.messageID)
+      if (message.metadata.type === TYPES.UNKNOWN) {
+        const cachedTypeData = this.typeCache.get(message.messageID)
 
-      if (cachedTypeData !== undefined) {
-        message.metadata.type = cachedTypeData
+        if (cachedTypeData !== undefined) {
+          message.metadata.type = cachedTypeData
+        }
       }
     } else {
       // we need to inject the type for internal messages
