@@ -47,6 +47,12 @@ export function encode(message: Message): Buffer {
 
   // Check that the type is of the correct size, it's a 4 bit int.
   if (type < 0 || type > 15) {
+    if (type === -1) {
+      throw new TypeError(
+        'Packet type must have a value between 0 and 15 (inclusive), was -1, unset. The type cache may not have been populated in time, or it might be sent before the handshake.',
+      )
+    }
+
     throw new TypeError('Packet type must have a value between 0 and 15 (inclusive)')
   }
 
