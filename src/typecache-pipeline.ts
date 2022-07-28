@@ -31,6 +31,11 @@ class BinaryTypeCacheEncoderPipeline extends Pipeline {
         if (cachedTypeData !== undefined) {
           message.metadata.type = cachedTypeData
         }
+        // Queries don't need the correct type, so if we don't know them, set them to 0
+        // Perhaps discourage this, warn?
+        else if (message.metadata.query === true) {
+          message.metadata.type = TYPES.CALLBACK
+        }
       }
     } else {
       // we need to inject the type for internal messages
