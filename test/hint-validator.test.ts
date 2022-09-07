@@ -5,7 +5,7 @@ import {
   CancellationToken,
   Connection,
   ConnectionInterface,
-  DeliverabilityManagerDumb,
+  DeliverabilityManagerOneShot,
   DeviceID,
   DeviceManager,
   DiscoveryHintConsumer,
@@ -52,7 +52,7 @@ const mockTransportFactoryFactory = new TransportFactory((options: MockTransport
 
   connectionInterface.setTransport(transport)
 
-  const deliverabilityManger = new DeliverabilityManagerDumb(connectionInterface)
+  const deliverabilityManger = new DeliverabilityManagerOneShot(connectionInterface)
 
   const queryManager = new QueryManagerBinaryProtocol({
     connectionInterface,

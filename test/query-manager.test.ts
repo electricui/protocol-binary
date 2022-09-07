@@ -6,7 +6,7 @@ import {
   CancellationToken,
   Connection,
   ConnectionInterface,
-  DeliverabilityManagerDumb,
+  DeliverabilityManagerOneShot,
   DeviceManager,
   Hint,
   Message,
@@ -58,7 +58,7 @@ function factory(receiveDataCallback: fakeDevice) {
     callback: transportReceivedDataCallback,
   })
 
-  const deliverabilityManger = new DeliverabilityManagerDumb(connectionInterface)
+  const deliverabilityManger = new DeliverabilityManagerOneShot(connectionInterface)
 
   const queryManager = new QueryManagerBinaryProtocol({
     connectionInterface,
