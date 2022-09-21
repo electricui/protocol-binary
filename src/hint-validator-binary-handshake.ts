@@ -92,6 +92,8 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     mark(`binary-validator:attempt-${attemptIndex}`)
     dBinaryHandshake(`Sending search attempt #${this.attemptIndex} `)
 
+    const start = Date.now()
+    
     // Setup the waitForReply handler
     const waitForReply = this.connection.waitForReply<number>((replyMessage: Message) => {
       // Hint validator binary handshake attempt
@@ -114,7 +116,7 @@ export default class HintValidatorBinaryHandshake extends DiscoveryHintValidator
     // Catch the waitForReply Promise
 
     const caughtWaitForReplyPromise = waitForReply.catch(e => {
-      dBinaryHandshake(`Hint Validator waitForReply ${attemptIndex} timed out`)
+      dBinaryHandshake(`Hint Validator waitForReply ${attemptIndex} timed out after ${Date.now() - start}ms`)
       return
     })
 
