@@ -23,7 +23,7 @@
     "@electricui/protocol-binary-constants": "workspace:*",
     "@electricui/timing": "workspace:*",
     "@electricui/utility-crc16": "workspace:*",
-    "debug": "^4.3.1"
+    "debug": "^4.3.4"
   },
   "devDependencies": {
     "@electricui/build-rollup-config": "workspace:*",
