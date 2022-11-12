@@ -51,7 +51,7 @@
     "mocha": "^5.2.0",
     "nyc": "^13.3.0",
     "performance-now": "^2.1.0",
-    "rollup": "2.51.2",
+    "rollup": "3.2.5",
     "serialport": "10.4.0",
     "sinon": "^7.2.3",
     "ts-jest": "^29.0.3",
@@ -63,7 +63,7 @@
     "prepack": "silversmith prepack",
     "postpack": "silversmith postpack",
     "bench": "ts-node ./benchmark/bench.ts",
-    "build": "rm -rf ./lib && rollup -c",
+    "build": "rm -rf ./lib && rollup -c --bundleConfigAsCjs",
     "test": "jest --runInBand",
     "watch": "jest --watch",
     "coverage": "jest --collectCoverage"
