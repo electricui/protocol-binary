@@ -92,7 +92,7 @@ export default class DeliverabilityManagerBinaryProtocol extends DeliverabilityM
         if (waitForReplyCancellationToken.caused(err)) {
           // Throw a proper error if the waitForReply times out
 
-          throw new Error(`Ack for ${message.messageID}: ${message.payload} not received after ${this.timeout}ms`)
+          throw new Error(`Ack for ${message.messageID} not received after ${this.timeout}ms`)
         }
 
         throw err
