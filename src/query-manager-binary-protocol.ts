@@ -49,28 +49,17 @@ export default class QueryManagerBinaryProtocol extends QueryManager {
     // Hold a copy of the messageID in this stack frame in case it mutates underneath us.
     const desiredMessageID = message.messageID
 
-    // We need jurisdiction to be able to cancel this independently of the upstream cancellationToken
-    const waitForReplyCancellationToken = new CancellationToken()
-    cancellationToken.subscribe(waitForReplyCancellationToken.cancel) // if the upst
-
     const waitForReply = connection.waitForReply((replyMessage: Message) => {
       // wait for a reply with the same ackNum and messageID
 
       return replyMessage.messageID === desiredMessageID && replyMessage.metadata.query === false
-    }, waitForReplyCancellationToken)
+    }, cancellationToken)
 
-    const queryPush = this.connectionInterface.writePipeline.push(message, cancellationToken).catch(err => {
-      // in the event of a push failure, cancel the waitForReply in the next tick, but we'll rethrow our push error first
-      // so that any handlers above us know it was the push that failed, not that there was a cancellation
-      setTimeout(() => {
-        waitForReplyCancellationToken.cancel()
-      })
-
-      // Rethrow the error to be caught further up the chain
+    try {
+      dQueryManager(`pushing query`)
+      await Promise.all([this.connectionInterface.writePipeline.push(message, cancellationToken), waitForReply])
+    } catch (err) {
       throw err
-    })
-
-    dQueryManager(`pushing query`)
-    await Promise.all([queryPush, waitForReply])
+    }
   }
 }

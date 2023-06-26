@@ -1,6 +1,6 @@
 import * as chai from 'chai'
 import * as sinon from 'sinon'
-import { describe, it } from '@jest/globals'
+import { describe, expect, it } from '@jest/globals'
 
 import {
   CancellationToken,
@@ -20,21 +20,19 @@ import QueryManagerBinaryProtocol from '../src/query-manager-binary-protocol'
 const chaiAsPromised = require('chai-as-promised')
 chai.use(chaiAsPromised)
 
-const assert = chai.assert
-
-type fakeDevice = (message: Message) => Array<Message> | null
+type FakeDevice = (message: Message, cancellationToken: CancellationToken) => Array<Message> | null
 
 const USAGE_REQUEST = 'test' as UsageRequest
 
-function factory(receiveDataCallback: fakeDevice) {
+function factory(receiveDataCallback: FakeDevice) {
   const receivedDataSpy = sinon.spy()
   const connectionInterface = new ConnectionInterface()
 
   let transport: Transport
 
-  const transportReceivedDataCallback = (message: Message) => {
+  const transportReceivedDataCallback = (message: Message, cancellationToken: CancellationToken) => {
     receivedDataSpy(message)
-    const replies = receiveDataCallback(message)
+    const replies = receiveDataCallback(message, cancellationToken)
 
     const promises: Promise<any>[] = []
 
@@ -42,9 +40,13 @@ function factory(receiveDataCallback: fakeDevice) {
       // send the reply back up the pipeline asynchronously
 
       for (const reply of replies) {
+        const upCancellationToken = new CancellationToken()
         const promise = new Promise((resolve, reject) => {
           setImmediate(() => {
-            transport.readPipeline.push(reply, new CancellationToken()).then(res => resolve(res))
+            transport.readPipeline
+              .push(reply, upCancellationToken)
+              .then(res => resolve(res))
+              .catch(err => reject(err))
           })
         })
         promises.push(promise)
@@ -52,6 +54,17 @@ function factory(receiveDataCallback: fakeDevice) {
 
       return Promise.all(promises)
     }
+
+    // If the cancellation token is cancelled, cancel the transport
+    return new Promise<void>((resolve, reject) => {
+      setImmediate(() => {
+        if (cancellationToken.isCancelled()) {
+          reject(cancellationToken.token)
+        } else {
+          resolve()
+        }
+      })
+    })
   }
 
   transport = new MockTransport({
@@ -103,7 +116,7 @@ describe('Binary Protocol Query Manager', () => {
     await noQueryWrite
   })
 
-  it('it rejects after the cancellation token is cancelled when no reply is received', async () => {
+  it('it rejects with the cancellation token if cancelled', async () => {
     const device = (message: Message) => {
       // do not reply
       return null
@@ -116,13 +129,13 @@ describe('Binary Protocol Query Manager', () => {
     const messageAck = new Message('ack', null)
     messageAck.metadata.query = true
 
-    let caught = false
+    let caught: Error | null = null
 
-    const cancellationToken = new CancellationToken()
+    const cancellationToken = new CancellationToken(`connection write`)
 
     const noAckWrite = connection.write(messageAck, cancellationToken).catch(err => {
       // we expect this to happen
-      caught = true
+      caught = err
     })
 
     cancellationToken.cancel()
@@ -131,6 +144,6 @@ describe('Binary Protocol Query Manager', () => {
 
     await connection.removeUsageRequest(USAGE_REQUEST)
 
-    assert.isTrue(caught)
+    expect(caught).toBe(cancellationToken.token)
   })
 })
