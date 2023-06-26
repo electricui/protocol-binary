@@ -1,10 +1,10 @@
-import { Sink, Transport } from '@electricui/core'
+import { CancellationToken, Sink, Transport } from '@electricui/core'
 
-type Callback = (chunk: any) => void
+type Callback = (chunk: any, cancellationToken: CancellationToken) => void
 
 export interface MockTransportOptions {
   [key: string]: any
-  callback: (chunk: any) => void
+  callback: (chunk: any, cancellationToken: CancellationToken) => void
 }
 
 class TestSink extends Sink {
@@ -14,8 +14,8 @@ class TestSink extends Sink {
     this.callback = callback
   }
 
-  async receive(chunk: any) {
-    return this.callback(chunk)
+  async receive(chunk: any, cancellationToken: CancellationToken) {
+    return this.callback(chunk, cancellationToken)
   }
 }
 

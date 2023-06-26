@@ -1,6 +1,6 @@
 import * as chai from 'chai'
 import * as sinon from 'sinon'
-import { describe, expect, it, xit } from '@jest/globals'
+import { describe, expect, it } from '@jest/globals'
 
 import {
   CancellationToken,
@@ -20,33 +20,19 @@ import MockTransport from './fixtures/mock-transport'
 const chaiAsPromised = require('chai-as-promised')
 chai.use(chaiAsPromised)
 
-const assert = chai.assert
-
-class TestSink extends Sink {
-  callback: (chunk: any) => void
-  constructor(callback: (chunk: any) => void) {
-    super()
-    this.callback = callback
-  }
-
-  async receive(chunk: any) {
-    return this.callback(chunk)
-  }
-}
-
 const USAGE_REQUEST = 'test' as UsageRequest
 
-type fakeDevice = (message: Message) => Array<Message> | null
+type FakeDevice = (message: Message, cancellationToken: CancellationToken) => Array<Message> | null
 
-function factory(receiveDataCallback: fakeDevice) {
+function factory(receiveDataCallback: FakeDevice) {
   const receivedDataSpy = sinon.spy()
   const connectionInterface = new ConnectionInterface()
 
   let transport: Transport
 
-  const transportReceivedDataCallback = (message: Message) => {
+  const transportReceivedDataCallback = (message: Message, cancellationToken: CancellationToken) => {
     receivedDataSpy(message)
-    const replies = receiveDataCallback(message)
+    const replies = receiveDataCallback(message, cancellationToken)
 
     const promises: Promise<any>[] = []
 
@@ -54,10 +40,13 @@ function factory(receiveDataCallback: fakeDevice) {
       // send the reply back up the pipeline asynchronously
 
       for (const reply of replies) {
-        const cancellationToken = new CancellationToken()
+        const upCancellationToken = new CancellationToken()
         const promise = new Promise((resolve, reject) => {
           setImmediate(() => {
-            transport.readPipeline.push(reply, cancellationToken).then(res => resolve(res))
+            transport.readPipeline
+              .push(reply, upCancellationToken)
+              .then(res => resolve(res))
+              .catch(err => reject(err))
           })
         })
         promises.push(promise)
@@ -65,6 +54,17 @@ function factory(receiveDataCallback: fakeDevice) {
 
       return Promise.all(promises)
     }
+
+    // If the cancellation token is cancelled, cancel the transport
+    return new Promise<void>((resolve, reject) => {
+      setImmediate(() => {
+        if (cancellationToken.isCancelled()) {
+          reject(cancellationToken.token)
+        } else {
+          resolve()
+        }
+      })
+    })
   }
 
   transport = new MockTransport({
@@ -176,6 +176,7 @@ describe('Binary Protocol Deliverability Manager', () => {
     expect(caught).toBeTruthy()
     expect(noAckWrite).rejects
   })
+
   it('it resolves when a reply is received', async () => {
     const device = (message: Message) => {
       // reply with the  ack message
@@ -227,10 +228,36 @@ describe('Binary Protocol Deliverability Manager', () => {
 
     await ackWrite
   })
-})
 
-/*
-  const messageAck = new Message('ack', 1)
-  messageAck.metadata.ack = true
-  connection.write(messageAck)
-*/
+  it('it rejects with the correct token if upstream is cancelled', async () => {
+    const device = (message: Message) => {
+      // do not reply
+      return null
+    }
+
+    const { receivedDataSpy, connection } = factory(device)
+
+    await connection.addUsageRequest(USAGE_REQUEST, new CancellationToken())
+
+    const messageAck = new Message('ack', 1)
+    messageAck.metadata.ack = true
+
+    let caught: Error | null = null
+
+    const upstreamCancellationToken = new CancellationToken('upstream')
+
+    const noAckWrite = connection.write(messageAck, upstreamCancellationToken).catch(err => {
+      // we expect this to happen
+      caught = err
+    })
+
+    upstreamCancellationToken.cancel()
+
+    await noAckWrite
+
+    await connection.removeUsageRequest(USAGE_REQUEST)
+
+    expect(caught).toBe(upstreamCancellationToken.token)
+    expect(noAckWrite).rejects
+  })
+})
